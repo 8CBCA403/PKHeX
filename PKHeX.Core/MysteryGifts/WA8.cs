@@ -26,8 +26,9 @@ namespace PKHeX.Core
         public WA8() : this(new byte[Size]) { }
         public WA8(byte[] data) : base(data) { }
 
-        public bool CanBeReceivedByVersion(int v) => v is (int) GameVersion.PLA;
+        public bool CanBeReceivedByVersion(int v, PKM pk) => v is (int) GameVersion.PLA || (pk is PK8 && v is (int)GameVersion.SW);
         public bool IsDateRestricted => true;
+        public bool IsEquivalentFixedECPID => EncryptionConstant != 0 && PIDType == ShinyType8.FixedValue && PID == EncryptionConstant;
 
         // General Card Properties
         public override int CardID
@@ -373,6 +374,8 @@ namespace PKHeX.Core
             return 0x124 + (index * 0x1C);
         }
 
+        public bool IsHOMEGift => CardID >= 9000;
+
         public bool CanHandleOT(int language) => !GetHasOT(language);
 
         public override GameVersion Version
@@ -403,7 +406,7 @@ namespace PKHeX.Core
                 Species = Species,
                 Form = Form,
                 CurrentLevel = currentLevel,
-                Ball = Ball != 0 ? Ball : 4, // Default is Pokeball
+                Ball = Ball != 0 ? Ball : (int)Core.Ball.LAPoke, // Default is Pokeball
                 Met_Level = metLevel,
                 HeldItem = HeldItem,
 
@@ -441,15 +444,22 @@ namespace PKHeX.Core
                 EV_SPA = EV_SPA,
                 EV_SPD = EV_SPD,
 
-                CanGigantamax = CanGigantamax,
-                DynamaxLevel = DynamaxLevel,
+                GV_HP  = GV_HP,
+                GV_ATK = GV_ATK,
+                GV_DEF = GV_DEF,
+                GV_SPE = GV_SPE,
+                GV_SPA = GV_SPA,
+                GV_SPD = GV_SPD,
+
+              //CanGigantamax = CanGigantamax,
+              //DynamaxLevel = DynamaxLevel,
 
                 Met_Location = MetLocation,
                 Egg_Location = EggLocation,
             };
             pk.SetMaximumPPCurrent();
 
-            if ((sav.Generation > Generation && OriginGame == 0) || !CanBeReceivedByVersion(pk.Version))
+            if ((sav.Generation > Generation && OriginGame == 0) || !CanBeReceivedByVersion(pk.Version, pk))
                 pk.Version = (int)GameVersion.PLA;
 
             if (OTGender >= 2)
@@ -459,6 +469,10 @@ namespace PKHeX.Core
             }
 
             pk.MetDate = IsDateRestricted && EncounterServerDate.WA8Gifts.TryGetValue(CardID, out var dt) ? dt.Start : DateTime.Now;
+
+            // HOME Gifts for Sinnoh/Hisui starters were forced JPN until May 20, 2022 (UTC).
+            if (CardID is 9018 or 9019 or 9020)
+                pk.Met_Day = 20;
 
             var nickname_language = GetLanguage(language);
             pk.Language = nickname_language != 0 ? nickname_language : sav.Language;
@@ -531,9 +545,24 @@ namespace PKHeX.Core
             ShinyType8.Random       => Util.Rand32(), // Random, Any
             ShinyType8.AlwaysStar   => (uint)(((tr.TID ^ tr.SID ^ (PID & 0xFFFF) ^ 1) << 16) | (PID & 0xFFFF)), // Fixed, Force Star
             ShinyType8.AlwaysSquare => (uint)(((tr.TID ^ tr.SID ^ (PID & 0xFFFF) ^ 0) << 16) | (PID & 0xFFFF)), // Fixed, Force Square
-            ShinyType8.FixedValue   => PID, // Fixed, Force Value
+            ShinyType8.FixedValue   => GetFixedPID(tr),
             _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
+        private uint GetFixedPID(ITrainerID tr)
+        {
+            var pid = PID;
+            if (!tr.IsShiny(pid, 8))
+                return pid;
+            if (IsHOMEGift)
+                return GetAntishinyFixedHOME(tr);
+            return pid;
+        }
+
+        private static uint GetAntishinyFixedHOME(ITrainerID tr)
+        {
+            var fid = ((uint)(tr.SID << 16) | (uint)tr.TID);
+            return fid ^ 0x10u;
+        }
 
         private static uint GetAntishiny(ITrainerID tr)
         {
@@ -578,7 +607,7 @@ namespace PKHeX.Core
 
         public override bool IsMatchExact(PKM pkm, EvoCriteria evo)
         {
-            if (pkm.Egg_Location == 0) // Not Egg
+            if (!IsEgg)
             {
                 if (OTGender < 2)
                 {
@@ -592,7 +621,11 @@ namespace PKHeX.Core
 
                 var OT = GetOT(pkm.Language); // May not be guaranteed to work.
                 if (!string.IsNullOrEmpty(OT) && OT != pkm.OT_Name) return false;
-                if (OriginGame != 0 && OriginGame != pkm.Version) return false;
+                if (OriginGame != 0 && OriginGame != pkm.Version)
+                {
+                    if (OriginGame is (int)GameVersion.PLA && !(pkm.Version is (int)GameVersion.SW && pkm.Met_Location == Locations.HOME_SWLA))
+                        return false;
+                }
                 if (EncryptionConstant != 0)
                 {
                     if (EncryptionConstant != pkm.EncryptionConstant)
@@ -623,8 +656,17 @@ namespace PKHeX.Core
             else
             {
                 if (!Shiny.IsValid(pkm)) return false;
-                if (EggLocation != pkm.Egg_Location) return false;
-                if (MetLocation != pkm.Met_Location) return false;
+                if (!IsMatchEggLocation(pkm)) return false;
+                if (pkm is PK8)
+                {
+                    if (pkm.Met_Location != Locations.HOME_SWLA)
+                        return false;
+                }
+                else
+                {
+                    if (MetLocation != pkm.Met_Location)
+                        return false;
+                }
             }
 
             if (MetLevel != 0 && MetLevel != pkm.Met_Level) return false;
@@ -636,13 +678,15 @@ namespace PKHeX.Core
             var expectedBall = (Ball == 0 ? poke : Ball);
             if (expectedBall < poke) // Not even Cherish balls are safe! They get set to the proto-Poké ball.
                 expectedBall = poke;
+            if (pkm is PK8)
+                expectedBall = (int)Core.Ball.Poke; // Transferred to SWSH -> Regular Poké ball
             if (expectedBall != pkm.Ball)
                 return false;
 
-            if (pkm is IGigantamax g && g.CanGigantamax != CanGigantamax && !g.CanToggleGigantamax(pkm.Species, pkm.Form, Species, Form))
+            if (pkm is IDynamaxLevel dl && dl.DynamaxLevel < DynamaxLevel)
                 return false;
 
-            if (pkm is not IDynamaxLevel dl || dl.DynamaxLevel < DynamaxLevel)
+            if (pkm is IGanbaru b && b.IsGanbaruValuesBelow(this))
                 return false;
 
             // PID Types 0 and 1 do not use the fixed PID value.

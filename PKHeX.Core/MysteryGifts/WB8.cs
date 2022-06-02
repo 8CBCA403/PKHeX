@@ -8,13 +8,16 @@ namespace PKHeX.Core
     /// <summary>
     /// Generation 8b Mystery Gift Template File
     /// </summary>
-    public sealed class WB8 : DataMysteryGift, ILangNick, INature, IRibbonIndex, IContestStats, ILangNicknamedTemplate,
+    public sealed class WB8 : DataMysteryGift, ILangNick, INature, IRibbonIndex, IContestStats, ILangNicknamedTemplate, IEncounterServerDate,
         IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6, IRibbonSetCommon7, IRibbonSetCommon8, IRibbonSetMark8
     {
         public const int Size = 0x2DC;
         public const int CardStart = 0x0;
 
         public override int Generation => 8;
+
+        public bool IsDateRestricted => IsHOMEGift;
+        public bool IsEquivalentFixedECPID => EncryptionConstant != 0 && PIDType == ShinyType8.FixedValue && PID == EncryptionConstant;
 
         public enum GiftType : byte
         {
@@ -32,7 +35,7 @@ namespace PKHeX.Core
 
         // TODO: public byte RestrictVersion?
 
-        public bool CanBeReceivedByVersion(int v) => v is (int) GameVersion.BD or (int) GameVersion.SP;
+        public bool CanBeReceivedByVersion(int v, PKM pk) => v is (int) GameVersion.BD or (int) GameVersion.SP || (pk is PK8 && Locations.IsValidMetBDSP(pk.Met_Location, pk.Version));
 
         // General Card Properties
 
@@ -182,7 +185,7 @@ namespace PKHeX.Core
 
         public int MetLevel { get => Data[CardStart + 0x291]; set => Data[CardStart + 0x291] = (byte)value; }
 
-        // Ribbons 0x24C-0x26C
+        // Ribbons 0x292-0x2B2
         private const int RibbonBytesOffset = 0x292;
         private const int RibbonBytesCount = 0x20;
         private const int RibbonByteNone = 0xFF; // signed -1
@@ -366,6 +369,8 @@ namespace PKHeX.Core
             return 0x150 + (index * 0x20);
         }
 
+        public bool IsHOMEGift => CardID >= 9000;
+
         public bool CanHandleOT(int language) => !GetHasOT(language);
 
         public override GameVersion Version
@@ -438,6 +443,8 @@ namespace PKHeX.Core
                 Met_Location = MetLocation,
                 Egg_Location = EggLocation,
             };
+            if (EggLocation == 0)
+                pk.Egg_Location = Locations.Default8bNone;
 
             if (Species == (int)Core.Species.Manaphy && IsEgg)
             {
@@ -447,12 +454,12 @@ namespace PKHeX.Core
             }
             pk.SetMaximumPPCurrent();
 
-            if ((sav.Generation > Generation && OriginGame == 0) || !CanBeReceivedByVersion(pk.Version))
+            if ((sav.Generation > Generation && OriginGame == 0) || !CanBeReceivedByVersion(pk.Version, pk))
             {
                 // give random valid game
                 var rnd = Util.Rand;
                 do { pk.Version = (int)GameVersion.BD + rnd.Next(2); }
-                while (!CanBeReceivedByVersion(pk.Version));
+                while (!CanBeReceivedByVersion(pk.Version, pk));
             }
 
             if (pk.TID == 0 && pk.SID == 0)
@@ -461,7 +468,10 @@ namespace PKHeX.Core
                 pk.SID = sav.SID;
             }
 
-            pk.MetDate = DateTime.Now;
+            pk.MetDate = IsDateRestricted && EncounterServerDate.WA8Gifts.TryGetValue(CardID, out var dt) ? dt.Start : DateTime.Now;
+            // HOME Gifts for Sinnoh/Hisui starters were forced JPN until May 20, 2022 (UTC).
+            if (CardID is 9015 or 9016 or 9017)
+                pk.Met_Day = 20;
 
             var nickname_language = GetLanguage(language);
             pk.Language = nickname_language != 0 ? nickname_language : sav.Language;
@@ -525,30 +535,43 @@ namespace PKHeX.Core
             _ => AbilityPermission.Any12H,
         };
 
-        private uint GetPID(ITrainerID tr, byte type)
+        private uint GetPID(ITrainerID tr, ShinyType8 type) => type switch
         {
-            return type switch
-            {
-                0 => GetAntishiny(tr), // Random, Never Shiny
-                1 => Util.Rand32(), // Random, Any
-                2 => (uint) (((tr.TID ^ tr.SID ^ (PID & 0xFFFF) ^ 1) << 16) | (PID & 0xFFFF)), // Fixed, Force Star
-                3 => (uint) (((tr.TID ^ tr.SID ^ (PID & 0xFFFF) ^ 0) << 16) | (PID & 0xFFFF)), // Fixed, Force Square
-                4 => PID, // Fixed, Force Value
-                _ => throw new ArgumentOutOfRangeException(nameof(type)),
-            };
+            ShinyType8.Never        => GetAntishiny(tr), // Random, Never Shiny
+            ShinyType8.Random       => Util.Rand32(), // Random, Any
+            ShinyType8.AlwaysStar   => (uint)(((tr.TID ^ tr.SID ^ (PID & 0xFFFF) ^ 1) << 16) | (PID & 0xFFFF)), // Fixed, Force Star
+            ShinyType8.AlwaysSquare => (uint)(((tr.TID ^ tr.SID ^ (PID & 0xFFFF) ^ 0) << 16) | (PID & 0xFFFF)), // Fixed, Force Square
+            ShinyType8.FixedValue   => GetFixedPID(tr),
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
+        };
 
-            static uint GetAntishiny(ITrainerID tr)
-            {
-                var pid = Util.Rand32();
-                if (tr.IsShiny(pid, 8))
-                    return pid ^ 0x1000_0000;
+        private uint GetFixedPID(ITrainerID tr)
+        {
+            var pid = PID;
+            if (!tr.IsShiny(pid, 8))
                 return pid;
-            }
+            if (IsHOMEGift)
+                return GetAntishinyFixedHOME(tr);
+            return pid;
+        }
+
+        private static uint GetAntishinyFixedHOME(ITrainerID tr)
+        {
+            var fid = ((uint)(tr.SID << 16) | (uint)tr.TID);
+            return fid ^ 0x10u;
+        }
+
+        private static uint GetAntishiny(ITrainerID tr)
+        {
+            var pid = Util.Rand32();
+            if (tr.IsShiny(pid, 8))
+                return pid ^ 0x1000_0000;
+            return pid;
         }
 
         private void SetPID(PKM pk)
         {
-            pk.PID = GetPID(pk, PIDTypeValue);
+            pk.PID = GetPID(pk, PIDType);
         }
 
         private void SetIVs(PKM pk)
@@ -581,7 +604,7 @@ namespace PKHeX.Core
 
         public override bool IsMatchExact(PKM pkm, EvoCriteria evo)
         {
-            if ((short)pkm.Egg_Location == Locations.Default8bNone) // Not Egg
+            if (!IsEgg)
             {
                 if (OTGender < 2)
                 {
@@ -595,7 +618,13 @@ namespace PKHeX.Core
 
                 var OT = GetOT(pkm.Language); // May not be guaranteed to work.
                 if (!string.IsNullOrEmpty(OT) && OT != pkm.OT_Name) return false;
-                if (OriginGame != 0 && OriginGame != pkm.Version) return false;
+                if (OriginGame != 0 && OriginGame != pkm.Version)
+                {
+                    if (OriginGame is (int)GameVersion.BD && !(pkm.Version is (int)GameVersion.SW && pkm.Met_Location == Locations.HOME_SWBD))
+                        return false;
+                    if (OriginGame is (int)GameVersion.SP && !(pkm.Version is (int)GameVersion.SH && pkm.Met_Location == Locations.HOME_SHSP))
+                        return false;
+                }
                 if (EncryptionConstant != 0)
                 {
                     if (EncryptionConstant != pkm.EncryptionConstant)
@@ -627,8 +656,17 @@ namespace PKHeX.Core
             else
             {
                 if (!Shiny.IsValid(pkm)) return false;
-                if (EggLocation != pkm.Egg_Location) return false;
-                if (MetLocation != pkm.Met_Location) return false;
+                if (!IsMatchEggLocation(pkm)) return false;
+                if (pkm is PK8)
+                {
+                    if (!Locations.IsValidMetBDSP(pkm.Met_Location, pkm.Version))
+                        return false;
+                }
+                else
+                {
+                    if (MetLocation != pkm.Met_Location)
+                        return false;
+                }
             }
 
             if (MetLevel != 0 && MetLevel != pkm.Met_Level) return false;
@@ -643,7 +681,13 @@ namespace PKHeX.Core
             var type = PIDTypeValue;
             if (type <= 1)
                 return true;
-            return pkm.PID == GetPID(pkm, type);
+            return pkm.PID == GetPID(pkm, (ShinyType8)type);
+        }
+
+        protected override bool IsMatchEggLocation(PKM pk)
+        {
+            var expect = pk is PB8 ? Locations.Default8bNone : 0;
+            return pk.Egg_Location == expect;
         }
 
         protected override bool IsMatchDeferred(PKM pkm) => Species != pkm.Species;
