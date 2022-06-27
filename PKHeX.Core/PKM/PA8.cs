@@ -57,7 +57,7 @@ public sealed class PA8 : PKM, ISanityChecksum, IMoveReset,
     }
 
     // Simple Generated Attributes
-    public ReadOnlySpan<bool> TechRecordPermitFlags => PersonalInfo.TMHM.AsSpan(PersonalInfoSWSH.CountTM);
+    public ReadOnlySpan<bool> TechRecordPermitFlags => Span<bool>.Empty;
     public ReadOnlySpan<int> TechRecordPermitIndexes => Legal.TMHM_SWSH.AsSpan(PersonalInfoSWSH.CountTM);
     public ReadOnlySpan<bool> MoveShopPermitFlags => PersonalInfo.SpecialTutors[0];
     public ReadOnlySpan<ushort> MoveShopPermitIndexes => Legal.MoveShop8_LA;
@@ -82,7 +82,7 @@ public sealed class PA8 : PKM, ISanityChecksum, IMoveReset,
     public override int OTLength => 12;
     public override int NickLength => 12;
 
-    public override int PSV => (int)((PID >> 16 ^ (PID & 0xFFFF)) >> 4);
+    public override int PSV => (int)(((PID >> 16) ^ (PID & 0xFFFF)) >> 4);
     public override int TSV => (TID ^ SID) >> 4;
     public override bool IsUntraded => Data[0xB8] == 0 && Data[0xB8 + 1] == 0 && Format == Generation; // immediately terminated HT_Name data (\0)
 
@@ -180,7 +180,7 @@ public sealed class PA8 : PKM, ISanityChecksum, IMoveReset,
     public byte CNT_Sheen { get => Data[0x31]; set => Data[0x31] = value; }
     private byte PKRS { get => Data[0x32]; set => Data[0x32] = value; }
     public override int PKRS_Days { get => PKRS & 0xF; set => PKRS = (byte)((PKRS & ~0xF) | value); }
-    public override int PKRS_Strain { get => PKRS >> 4; set => PKRS = (byte)((PKRS & 0xF) | value << 4); }
+    public override int PKRS_Strain { get => PKRS >> 4; set => PKRS = (byte)((PKRS & 0xF) | (value << 4)); }
     // 0x33 unused padding
 
     // ribbon u32
@@ -490,7 +490,7 @@ public sealed class PA8 : PKM, ISanityChecksum, IMoveReset,
         return FlagUtil.GetFlag(Data, 0x13F + ofs, index & 7);
     }
 
-    public void SetMoveRecordFlag(int index, bool value)
+    public void SetMoveRecordFlag(int index, bool value = true)
     {
         if ((uint)index > 112) // 14 bytes, 8 bits
             throw new ArgumentOutOfRangeException(nameof(index));
@@ -639,27 +639,21 @@ public sealed class PA8 : PKM, ISanityChecksum, IMoveReset,
         0, 0, 0, 0, 0, // Quirky
     };
 
-    public override int[] Markings
+    public override int MarkingCount => 6;
+
+    public override int GetMarking(int index)
     {
-        get
-        {
-            int[] marks = new int[8];
-            int val = MarkValue;
-            for (int i = 0; i < marks.Length; i++)
-                marks[i] = ((val >> (i * 2)) & 3) % 3;
-            return marks;
-        }
-        set => SetMarkings(value);
+        if ((uint)index >= MarkingCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        return (MarkValue >> (index * 2)) & 3;
     }
 
-    public override void SetMarkings(ReadOnlySpan<int> value)
+    public override void SetMarking(int index, int value)
     {
-        if (value.Length > 8)
-            return;
-        int v = 0;
-        for (int i = 0; i < value.Length; i++)
-            v |= (value[i] % 3) << (i * 2);
-        MarkValue = v;
+        if ((uint)index >= MarkingCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        var shift = index * 2;
+        MarkValue = (MarkValue & ~(0b11 << shift)) | ((value & 3) << shift);
     }
 
     public bool GetRibbon(int index) => FlagUtil.GetFlag(Data, GetRibbonByte(index), index & 7);
@@ -1045,6 +1039,7 @@ public sealed class PA8 : PKM, ISanityChecksum, IMoveReset,
             DynamaxLevel = DynamaxLevel,
 
             Favorite = Favorite,
+            MarkValue = MarkValue,
         };
 
         Nickname_Trash.CopyTo(pk.Nickname_Trash);

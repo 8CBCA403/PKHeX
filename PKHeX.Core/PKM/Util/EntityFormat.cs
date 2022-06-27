@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+using System;
 using static PKHeX.Core.PokeCrypto;
 using static PKHeX.Core.EntityFormatDetected;
 using static System.Buffers.Binary.BinaryPrimitives;
@@ -12,7 +11,7 @@ public static class EntityFormat
     /// Gets the generation of the Pokemon data.
     /// </summary>
     /// <param name="data">Raw data representing a Pokemon.</param>
-    /// <returns>An integer indicating the generation of the PKM file, or -1 if the data is invalid.</returns>
+    /// <returns>Enum indicating the generation of the PKM file, or <see cref="None"/> if the data is invalid.</returns>
     public static EntityFormatDetected GetFormat(ReadOnlySpan<byte> data)
     {
         if (!EntityDetection.IsSizePlausible(data.Length))
@@ -48,11 +47,7 @@ public static class EntityFormat
     private static bool IsFormat67(ReadOnlySpan<byte> data)
     {
         if (ReadUInt16LittleEndian(data[0x04..]) != 0) // Bad Sanity?
-            return false; // non-zero ItemID
-        if (ReadUInt16LittleEndian(data[0x06..]) == GetCHK(data, SIZE_6STORED))
-            return true;
-        if (ReadUInt16LittleEndian(data[0x58..]) != 0) // Not encrypted terminator
-            return false;
+            return false; // PGT with non-zero ItemID
 
         // PGT files have the last 0x10 bytes 00; PK6/etc will have data here.
         var tail = data[..^0x10];
@@ -61,6 +56,9 @@ public static class EntityFormat
             if (b != 0)
                 return true;
         }
+
+        if (ReadUInt16LittleEndian(data[0x06..]) == GetCHK(data, SIZE_6STORED))
+            return true; // decrypted
         return false;
     }
 
@@ -77,21 +75,21 @@ public static class EntityFormat
     }
 
     /// <summary>
-    /// Checks if the input PK6 file is really a PK7, if so, updates the object.
+    /// Checks if the input <see cref="PK6"/> file is really a <see cref="PK7"/>.
     /// </summary>
-    /// <returns>Updated PKM if actually PK7</returns>
     private static EntityFormatDetected GetFormat67(ReadOnlySpan<byte> data)
     {
         var pk = new PK6(data.ToArray());
         return IsFormatReally7(pk);
     }
 
-    // assumes decrypted state
+    /// <summary>
+    /// Checks if the input <see cref="PK8"/> file is really a <see cref="PB8"/>.
+    /// </summary>
     private static EntityFormatDetected GetFormat8(ReadOnlySpan<byte> data)
     {
-        if (data[0xDE] >= (byte)GameVersion.PLA)
-            return FormatPB8;
-        return FormatPK8;
+        var pk = new PK8(data.ToArray());
+        return IsFormatReally8b(pk);
     }
 
     /// <summary>
@@ -100,13 +98,13 @@ public static class EntityFormat
     /// <param name="data">Raw data of the Pokemon file.</param>
     /// <param name="prefer">Optional identifier for the preferred generation.  Usually the generation of the destination save file.</param>
     /// <returns>An instance of <see cref="PKM"/> created from the given <paramref name="data"/>, or null if <paramref name="data"/> is invalid.</returns>
-    public static PKM? GetFromBytes(byte[] data, int prefer = 7)
+    public static PKM? GetFromBytes(byte[] data, EntityContext prefer = EntityContext.None)
     {
         var format = GetFormat(data);
         return GetFromBytes(data, format, prefer);
     }
 
-    private static PKM? GetFromBytes(byte[] data, EntityFormatDetected format, int prefer) => format switch
+    private static PKM? GetFromBytes(byte[] data, EntityFormatDetected format, EntityContext prefer) => format switch
     {
         FormatPK1 => new PokeList1(data)[0],
         FormatPK2 => new PokeList2(data)[0],
@@ -123,7 +121,8 @@ public static class EntityFormat
         FormatPK8 => new PK8(data),
         FormatPA8 => new PA8(data),
         FormatPB8 => new PB8(data),
-        Format6or7 => prefer == 6 ? new PK6(data) : new PK7(data),
+        Format6or7 => prefer == EntityContext.Gen6 ? new PK6(data) : new PK7(data),
+        Format8or8b => prefer == EntityContext.Gen8b ? new PB8(data) : new PK8(data),
         _ => null,
     };
 
@@ -144,9 +143,11 @@ public static class EntityFormat
         // Check Ranges
         if (pk.Species > Legal.MaxSpeciesID_6)
             return FormatPK7;
-        if (pk.Moves.Any(move => move > Legal.MaxMoveID_6_AO))
+
+        const int maxMove = Legal.MaxMoveID_6_AO;
+        if (pk.Move1 > maxMove || pk.Move2 > maxMove || pk.Move3 > maxMove || pk.Move4 > maxMove)
             return FormatPK7;
-        if (pk.RelearnMoves.Any(move => move > Legal.MaxMoveID_6_AO))
+        if (pk.RelearnMove1 > maxMove || pk.RelearnMove2 > maxMove || pk.RelearnMove3 > maxMove || pk.RelearnMove4 > maxMove)
             return FormatPK7;
         if (pk.Ability > Legal.MaxAbilityID_6_AO)
             return FormatPK7;
@@ -171,7 +172,7 @@ public static class EntityFormat
             return FormatPK6;
         for (int i = 0; i < 6; i++)
         {
-            if ((mb >> (i << 1) & 3) == 3) // markings are 10 or 01 (or 00), never 11
+            if (((mb >> (i << 1)) & 3) == 3) // markings are 10 or 01 (or 00), never 11
                 return FormatPK6;
         }
 
@@ -179,6 +180,18 @@ public static class EntityFormat
             return FormatPK6;
 
         return Format6or7;
+    }
+
+    private static EntityFormatDetected IsFormatReally8b(PK8 pk)
+    {
+        if (pk.DynamaxLevel != 0)
+            return FormatPK8;
+        if (pk.CanGigantamax)
+            return FormatPK8;
+        if (pk.Species > Legal.MaxSpeciesID_4)
+            return FormatPK8;
+
+        return Format8or8b;
     }
 }
 
@@ -194,4 +207,5 @@ public enum EntityFormatDetected
     FormatPK8, FormatPA8, FormatPB8,
 
     Format6or7,
+    Format8or8b,
 }

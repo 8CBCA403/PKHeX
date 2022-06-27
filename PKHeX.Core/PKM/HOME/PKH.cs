@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using static System.Buffers.Binary.BinaryPrimitives;
 using static PKHeX.Core.GameVersion;
 using static PKHeX.Core.Locations;
@@ -14,7 +14,7 @@ public class PKH : PKM, IHandlerLanguage, IFormArgument, IHomeTrack, IBattleVers
     public GameDataPA8? DataPA8 { get; private set; }
     public GameDataPB8? DataPB8 { get; private set; }
 
-    public override EntityContext Context => EntityContext.Invalid;
+    public override EntityContext Context => EntityContext.None;
 
     public PKH(byte[] data) : base(DecryptHome(data))
     {
@@ -149,13 +149,17 @@ public class PKH : PKM, IHandlerLanguage, IFormArgument, IHomeTrack, IBattleVers
     public override string OT_Name { get => _coreData.OT_Name; set => _coreData.OT_Name = value; }
     public override string HT_Name { get => _coreData.HT_Name; set => _coreData.HT_Name = value; }
 
+    public override int MarkingCount => _coreData.MarkingCount;
+    public override int GetMarking(int index) => _coreData.GetMarking(index);
+    public override void SetMarking(int index, int value) => _coreData.SetMarking(index, value);
+
     #endregion
 
     #region Calculated
 
     public override int CurrentFriendship { get => CurrentHandler == 0 ? OT_Friendship : HT_Friendship; set { if (CurrentHandler == 0) OT_Friendship = value; else HT_Friendship = value; } }
 
-    public override int PSV => (int)((PID >> 16 ^ (PID & 0xFFFF)) >> 4);
+    public override int PSV => (int)(((PID >> 16) ^ (PID & 0xFFFF)) >> 4);
     public override int TSV => (TID ^ SID) >> 4;
 
     public override int Characteristic
@@ -234,7 +238,7 @@ public class PKH : PKM, IHandlerLanguage, IFormArgument, IHomeTrack, IBattleVers
         return HomeCrypto.Encrypt(result);
     }
 
-    private const int GameDataStart = HomeCrypto.SIZE_1HEADER + (2 + HomeCrypto.SIZE_1CORE) + 2;
+    private const int GameDataStart = HomeCrypto.SIZE_1HEADER + 2 + HomeCrypto.SIZE_1CORE + 2;
 
     public byte[] Rebuild()
     {

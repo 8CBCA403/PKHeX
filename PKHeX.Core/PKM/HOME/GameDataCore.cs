@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core;
@@ -53,7 +53,7 @@ public sealed class GameDataCore : IHomeTrack, ISpeciesForm, ITrainerID, INature
     public byte CNT_Sheen { get => Data[Offset + 0x32]; set => Data[Offset + 0x32] = value; }
     private byte PKRS { get => Data[Offset + 0x33]; set => Data[Offset + 0x33] = value; }
     public int PKRS_Days { get => PKRS & 0xF; set => PKRS = (byte)((PKRS & ~0xF) | value); }
-    public int PKRS_Strain { get => PKRS >> 4; set => PKRS = (byte)((PKRS & 0xF) | value << 4); }
+    public int PKRS_Strain { get => PKRS >> 4; set => PKRS = (byte)((PKRS & 0xF) | (value << 4)); }
 
     private bool GetFlag(int offset, int bit) => FlagUtil.GetFlag(Data, Offset + offset, bit);
     private void SetFlag(int offset, int bit, bool value) => FlagUtil.SetFlag(Data, Offset + offset, bit, value);
@@ -289,6 +289,23 @@ public sealed class GameDataCore : IHomeTrack, ISpeciesForm, ITrainerID, INature
     public bool HT_SPE { get => ((HyperTrainFlags >> 5) & 1) == 1; set => HyperTrainFlags = (byte)((HyperTrainFlags & ~(1 << 5)) | ((value ? 1 : 0) << 5)); }
 
     public int HeldItem { get => ReadUInt16LittleEndian(Data.AsSpan(Offset + 0xC6)); set => WriteUInt16LittleEndian(Data.AsSpan(Offset + 0xC6), (ushort)value); }
+
+    public int MarkingCount => 6;
+
+    public int GetMarking(int index)
+    {
+        if ((uint)index >= MarkingCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        return (MarkValue >> (index * 2)) & 3;
+    }
+
+    public void SetMarking(int index, int value)
+    {
+        if ((uint)index >= MarkingCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        var shift = index * 2;
+        MarkValue = (MarkValue & ~(0b11 << shift)) | ((value & 3) << shift);
+    }
 
     public void CopyTo(PKM pk)
     {

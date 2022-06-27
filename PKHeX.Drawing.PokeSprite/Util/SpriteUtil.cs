@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using System.Linq;
 using PKHeX.Core;
 using PKHeX.Drawing.PokeSprite.Properties;
 
@@ -88,7 +87,7 @@ public static class SpriteUtil
             var la = new LegalityAnalysis(pk, sav.Personal, box != -1 ? SlotOrigin.Box : SlotOrigin.Party);
             if (!la.Valid)
                 sprite = ImageUtil.LayerImage(sprite, Resources.warn, 0, FlagIllegalShiftY);
-            else if (pk.Format >= 8 && pk.Moves.Any(Legal.GetDummiedMovesHashSet(pk).Contains))
+            else if (pk.Format >= 8 && MoveInfo.IsDummiedMoveAny(pk))
                 sprite = ImageUtil.LayerImage(sprite, Resources.hint, 0, FlagIllegalShiftY);
 
             if (SpriteBuilder.ShowEncounterColorPKM != SpriteBackgroundType.None)
@@ -105,14 +104,14 @@ public static class SpriteUtil
             int team = flags.IsBattleTeam();
             if (team >= 0)
                 sprite = ImageUtil.LayerImage(sprite, Resources.team, SlotTeamShiftX, 0);
-            if (flags.HasFlagFast(StorageSlotFlag.Locked))
+            if (flags.HasFlagFast(StorageSlotSource.Locked))
                 sprite = ImageUtil.LayerImage(sprite, Resources.locked, SlotLockShiftX, 0);
 
             // Some games store Party directly in the list of pokemon data (LGP/E). Indicate accordingly.
             int party = flags.IsParty();
             if (party >= 0)
                 sprite = ImageUtil.LayerImage(sprite, PartyMarks[party], PartyMarkShiftX, 0);
-            if (flags.HasFlagFast(StorageSlotFlag.Starter))
+            if (flags.HasFlagFast(StorageSlotSource.Starter))
                 sprite = ImageUtil.LayerImage(sprite, Resources.starter, 0, 0);
         }
 
@@ -129,6 +128,9 @@ public static class SpriteUtil
         if (type == SpriteBackgroundType.BottomStripe)
         {
             int stripeHeight = SpriteBuilder.ShowEncounterThicknessStripe; // from bottom
+            if ((uint)stripeHeight > img.Height) // clamp negative & too-high values back to height.
+                stripeHeight = img.Height;
+
             byte opacity = SpriteBuilder.ShowEncounterOpacityStripe;
             return ImageUtil.ChangeTransparentTo(img, color, opacity, img.Width * 4 * (img.Height - stripeHeight));
         }
