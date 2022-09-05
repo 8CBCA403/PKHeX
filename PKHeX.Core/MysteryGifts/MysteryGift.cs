@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core;
@@ -115,7 +114,7 @@ public abstract class MysteryGift : IEncounterable, IMoveset, IRelearn
     }
 
     // Properties
-    public virtual int Species { get => -1; set { } }
+    public virtual ushort Species { get => 0; set { } }
     public abstract AbilityPermission Ability { get; }
     public abstract bool GiftUsed { get; set; }
     public abstract string CardTitle { get; set; }
@@ -131,8 +130,8 @@ public abstract class MysteryGift : IEncounterable, IMoveset, IRelearn
     public virtual string CardHeader => (CardID > 0 ? $"Card #: {CardID:0000}" : "N/A") + $" - {CardTitle.Replace('\u3000',' ').Trim()}";
 
     // Search Properties
-    public virtual IReadOnlyList<int> Moves { get => Array.Empty<int>(); set { } }
-    public virtual IReadOnlyList<int> Relearn { get => Array.Empty<int>(); set { } }
+    public virtual Moveset Moves { get => default; set { } }
+    public virtual Moveset Relearn { get => default; set { } }
     public virtual int[] IVs { get => Array.Empty<int>(); set { } }
     public virtual bool HasFixedIVs => true;
     public virtual void GetIVs(Span<int> value) { }
@@ -148,7 +147,7 @@ public abstract class MysteryGift : IEncounterable, IMoveset, IRelearn
     public virtual int HeldItem { get => -1; set { } }
     public virtual int AbilityType { get => -1; set { } }
     public abstract int Gender { get; set; }
-    public abstract int Form { get; set; }
+    public abstract byte Form { get; set; }
     public abstract int TID { get; set; }
     public abstract int SID { get; set; }
     public abstract string OT_Name { get; set; }
@@ -175,5 +174,5 @@ public abstract class MysteryGift : IEncounterable, IMoveset, IRelearn
     /// <summary>
     /// Checks if the <see cref="PKM"/> has the <see cref="move"/> in its current move list.
     /// </summary>
-    public bool HasMove(int move) => Moves.Contains(move);
+    public bool HasMove(ushort move) => Moves.Contains(move);
 }

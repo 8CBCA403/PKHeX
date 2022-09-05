@@ -1,12 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
 using static PKHeX.Core.EncountersWC3;
 
 namespace PKHeX.Core;
 
+/// <summary>
+/// Helper class that stores references to all the event data templates.
+/// </summary>
 public static class EncounterEvent
 {
     /// <summary>Event Database for Generation 3</summary>
@@ -63,6 +65,10 @@ public static class EncounterEvent
         return result;
     }
 
+    /// <summary>
+    /// Reloads the stored event templates.
+    /// </summary>
+    /// <param name="paths">External folder(s) to source individual mystery gift template files from.</param>
     public static void RefreshMGDB(params string[] paths)
     {
         ICollection<PCD> g4 = GetPCDDB(Util.GetBinaryResource("wc4.pkl"));
@@ -74,7 +80,8 @@ public static class EncounterEvent
         ICollection<WB8> b8 = GetWB8DB(Util.GetBinaryResource("wb8.pkl"));
         ICollection<WA8> a8 = GetWA8DB(Util.GetBinaryResource("wa8.pkl"));
 
-        foreach (var gift in paths.Where(Directory.Exists).SelectMany(MysteryUtil.GetGiftsFromFolder))
+        var gifts = GetGifts(paths);
+        foreach (var gift in gifts)
         {
             static void AddOrExpand<T>(ref ICollection<T> arr, T obj)
             {
@@ -116,6 +123,18 @@ public static class EncounterEvent
         MGDB_G8 = SetArray(g8);
         MGDB_G8A = SetArray(a8);
         MGDB_G8B = SetArray(b8);
+    }
+
+    private static IEnumerable<MysteryGift> GetGifts(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (!Directory.Exists(path))
+                continue;
+            var gifts = MysteryUtil.GetGiftsFromFolder(path);
+            foreach (var gift in gifts)
+                yield return gift;
+        }
     }
 
     public static IEnumerable<MysteryGift> GetAllEvents(bool sorted = true)

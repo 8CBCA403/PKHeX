@@ -3,6 +3,9 @@ using static PKHeX.Core.BinLinkerAccessor;
 
 namespace PKHeX.Core;
 
+/// <summary>
+/// Loosely aggregated legality logic.
+/// </summary>
 public static partial class Legal
 {
     // Gen 1
@@ -58,45 +61,11 @@ public static partial class Legal
     internal static int GetMaxSpeciesOrigin(PKM pk)
     {
         if (pk.Format == 1)
-            return GetMaxSpeciesOrigin(1);
+            return MaxSpeciesID_1;
         if (pk.Format == 2 || pk.VC)
-            return GetMaxSpeciesOrigin(2);
+            return MaxSpeciesID_2;
         return GetMaxSpeciesOrigin(pk.Generation);
     }
-
-    internal static int GetMaxSpeciesOrigin(int generation, GameVersion version) => generation switch
-    {
-        1 => MaxSpeciesID_1,
-        2 => MaxSpeciesID_2,
-        3 => MaxSpeciesID_3,
-        4 => MaxSpeciesID_4,
-        5 => MaxSpeciesID_5,
-        6 => MaxSpeciesID_6,
-        7 when GameVersion.GG.Contains(version) => MaxSpeciesID_7b,
-        7 when GameVersion.USUM.Contains(version) => MaxSpeciesID_7_USUM,
-        7 => MaxSpeciesID_7,
-        8 when version is GameVersion.PLA => MaxSpeciesID_8a,
-        8 when GameVersion.BDSP.Contains(version) => MaxSpeciesID_8b,
-        8 => MaxSpeciesID_8_R2,
-        _ => -1,
-    };
-
-    internal static int GetMaxSpeciesOrigin(EntityContext context) => context switch
-    {
-        EntityContext.Gen1 => MaxSpeciesID_1,
-        EntityContext.Gen2 => MaxSpeciesID_2,
-        EntityContext.Gen3 => MaxSpeciesID_3,
-        EntityContext.Gen4 => MaxSpeciesID_4,
-        EntityContext.Gen5 => MaxSpeciesID_5,
-        EntityContext.Gen6 => MaxSpeciesID_6,
-        EntityContext.Gen7 => MaxSpeciesID_7_USUM,
-        EntityContext.Gen8 => MaxSpeciesID_8_R2,
-
-        EntityContext.Gen7b => MaxSpeciesID_7b,
-        EntityContext.Gen8a => MaxSpeciesID_8a,
-        EntityContext.Gen8b => MaxSpeciesID_8b,
-        _ => -1,
-    };
 
     internal static int GetMaxSpeciesOrigin(int generation) => generation switch
     {
@@ -108,19 +77,6 @@ public static partial class Legal
         6 => MaxSpeciesID_6,
         7 => MaxSpeciesID_7b,
         8 => MaxSpeciesID_8a,
-        _ => -1,
-    };
-
-    internal static int GetDebutGeneration(int species) => species switch
-    {
-        <= MaxSpeciesID_1 => 1,
-        <= MaxSpeciesID_2 => 2,
-        <= MaxSpeciesID_3 => 3,
-        <= MaxSpeciesID_4 => 4,
-        <= MaxSpeciesID_5 => 5,
-        <= MaxSpeciesID_6 => 6,
-        <= MaxSpeciesID_7b => 7,
-        <= MaxSpeciesID_8a => 8,
         _ => -1,
     };
 
@@ -137,40 +93,18 @@ public static partial class Legal
         _ => -1,
     };
 
-    internal static int GetMaxMoveID(int generation) => generation switch
-    {
-        1 => MaxMoveID_1,
-        2 => MaxMoveID_2,
-        3 => MaxMoveID_3,
-        4 => MaxMoveID_4,
-        5 => MaxMoveID_5,
-        6 => MaxMoveID_6_AO,
-        7 => MaxMoveID_7b,
-        8 => MaxMoveID_8a,
-        _ => -1,
-    };
-
     /// <summary>
     /// Checks if the relearn moves should be wiped.
     /// </summary>
     /// <remarks>Already checked for generations &lt; 8.</remarks>
     /// <param name="pk">Entity to check</param>
-    internal static bool IsOriginalMovesetDeleted(this PKM pk)
+    internal static bool IsOriginalMovesetDeleted(this PKM pk) => pk switch
     {
-        if (pk is PA8 {LA: false} or PB8 {BDSP: false})
-            return true;
-        if (pk.IsNative)
-        {
-            if (pk is PK8 {LA: true} or PK8 {BDSP: true})
-                return true;
-            return false;
-        }
-
-        if (pk is IBattleVersion { BattleVersion: not 0 })
-            return true;
-
-        return false;
-    }
+        PA8 pa8 => !pa8.LA,
+        PB8 pb8 => !pb8.BDSP,
+        PK8 pk8 => pk8.IsSideTransfer || pk8.BattleVersion != 0,
+        _ => false,
+    };
 
     /// <summary>
     /// Indicates if PP Ups are available for use.
@@ -207,13 +141,26 @@ public static partial class Legal
         return true;
     }
 
-    public static bool GetIsFixedIVSequenceValidNoRand(ReadOnlySpan<int> IVs, PKM pk)
+    public static bool GetIsFixedIVSequenceValidSkipRand(IndividualValueSet IVs, PKM pk, int max = 31)
     {
-        for (int i = 0; i < 6; i++)
-        {
-            if (IVs[i] != pk.GetIV(i))
-                return false;
-        }
+        // Template IVs not in the [0,max] range are random. Only check for IVs within the "specified" range.
+        if ((uint)IVs.HP  <= max && IVs.HP  != pk.IV_HP ) return false;
+        if ((uint)IVs.ATK <= max && IVs.ATK != pk.IV_ATK) return false;
+        if ((uint)IVs.DEF <= max && IVs.DEF != pk.IV_DEF) return false;
+        if ((uint)IVs.SPE <= max && IVs.SPE != pk.IV_SPE) return false;
+        if ((uint)IVs.SPA <= max && IVs.SPA != pk.IV_SPA) return false;
+        if ((uint)IVs.SPD <= max && IVs.SPD != pk.IV_SPD) return false;
+        return true;
+    }
+
+    public static bool GetIsFixedIVSequenceValidNoRand(IndividualValueSet IVs, PKM pk)
+    {
+        if (IVs.HP  != pk.IV_HP ) return false;
+        if (IVs.ATK != pk.IV_ATK) return false;
+        if (IVs.DEF != pk.IV_DEF) return false;
+        if (IVs.SPE != pk.IV_SPE) return false;
+        if (IVs.SPA != pk.IV_SPA) return false;
+        if (IVs.SPD != pk.IV_SPD) return false;
         return true;
     }
 

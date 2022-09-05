@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace PKHeX.Core;
@@ -13,7 +12,7 @@ public static class LearnVerifierRelearn
     {
         if (ShouldNotHaveRelearnMoves(enc, pk))
             VerifyRelearnNone(pk, result);
-        else if (enc is IRelearn {Relearn: int[] {Length: not 0} x})
+        else if (enc is IRelearn {Relearn: {HasMoves: true} x})
             VerifyRelearnSpecifiedMoveset(pk, x, result);
         else if (enc is EncounterEgg e)
             VerifyEggMoveset(e, result, pk.RelearnMoves);
@@ -27,18 +26,16 @@ public static class LearnVerifierRelearn
 
     public static bool ShouldNotHaveRelearnMoves(IGeneration enc, PKM pk) => enc.Generation < 6 || pk.IsOriginalMovesetDeleted();
 
-    private static void VerifyRelearnSpecifiedMoveset(PKM pk, IReadOnlyList<int> required, Span<MoveResult> result)
+    private static void VerifyRelearnSpecifiedMoveset(PKM pk, Moveset required, Span<MoveResult> result)
     {
-        for (int i = result.Length - 1; i >= 0; i--)
-        {
-            var current = pk.GetRelearnMove(i);
-            var expect = required[i];
-            result[i] = ParseExpect(current, expect);
-        }
+        result[3] = ParseExpect(pk.RelearnMove4, required.Move4);
+        result[2] = ParseExpect(pk.RelearnMove3, required.Move3);
+        result[1] = ParseExpect(pk.RelearnMove2, required.Move2);
+        result[0] = ParseExpect(pk.RelearnMove1, required.Move1);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static MoveResult ParseExpect(int move, int expect = 0)
+    private static MoveResult ParseExpect(ushort move, ushort expect = 0)
     {
         if (move != expect)
             return MoveResult.Unobtainable(expect);
@@ -78,7 +75,7 @@ public static class LearnVerifierRelearn
         result[0] = ParseExpect(pk.RelearnMove1);
     }
 
-    internal static void VerifyEggMoveset(EncounterEgg e, Span<MoveResult> result, ReadOnlySpan<int> moves)
+    internal static void VerifyEggMoveset(EncounterEgg e, Span<MoveResult> result, ReadOnlySpan<ushort> moves)
     {
         int gen = e.Generation;
         Span<byte> origins = stackalloc byte[moves.Length];
@@ -95,7 +92,7 @@ public static class LearnVerifierRelearn
         }
         else
         {
-            Span<int> expected = stackalloc int[moves.Length];
+            Span<ushort> expected = stackalloc ushort[moves.Length];
             _ = MoveBreed.GetExpectedMoves(moves, e, expected);
             _ = MoveBreed.Validate(gen, e.Species, e.Form, e.Version, expected, origins);
             for (int i = moves.Length - 1; i >= 0; i--)
@@ -118,7 +115,7 @@ public static class LearnVerifierRelearn
 
     private const int NO_DUPE = -1;
 
-    private static int IsAnyMoveDuplicate(ReadOnlySpan<int> move)
+    private static int IsAnyMoveDuplicate(ReadOnlySpan<ushort> move)
     {
         int m1 = move[0];
         int m2 = move[1];

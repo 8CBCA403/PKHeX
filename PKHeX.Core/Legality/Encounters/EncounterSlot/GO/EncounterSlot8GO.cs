@@ -19,7 +19,7 @@ public sealed record EncounterSlot8GO : EncounterSlotGO, IFixedOTFriendship
     /// </remarks>
     public PogoImportFormat OriginFormat { get; }
 
-    public EncounterSlot8GO(EncounterArea8g area, int species, int form, int start, int end, Shiny shiny, Gender gender, PogoType type, PogoImportFormat originFormat)
+    public EncounterSlot8GO(EncounterArea8g area, ushort species, byte form, int start, int end, Shiny shiny, Gender gender, PogoType type, PogoImportFormat originFormat)
         : base(area, species, form, start, end, shiny, gender, type)
     {
         OriginFormat = originFormat;
@@ -28,7 +28,7 @@ public sealed record EncounterSlot8GO : EncounterSlotGO, IFixedOTFriendship
     /// <summary>
     /// Checks if the <seealso cref="Ball"/> is compatible with the <seealso cref="PogoType"/>.
     /// </summary>
-    public bool IsBallValid(Ball ball, int currentSpecies)
+    public bool IsBallValid(Ball ball, ushort currentSpecies)
     {
         // GO does not natively produce Shedinja when evolving Nincada, and thus must be evolved in future games.
         if (currentSpecies == (int)Core.Species.Shedinja && currentSpecies != Species)
@@ -120,9 +120,8 @@ public sealed record EncounterSlot8GO : EncounterSlotGO, IFixedOTFriendship
         pk.Gender = gender;
 
         pk.AbilityNumber = 1 << ability;
-        var abilities = pi.Abilities;
-        if ((uint)ability < abilities.Count)
-            pk.Ability = abilities[ability];
+        if ((uint)ability < pi.AbilityCount)
+            pk.Ability = pi.GetAbilityAtIndex(ability);
 
         pk.SetRandomIVsGO();
         base.SetPINGA(pk, criteria);
@@ -130,12 +129,20 @@ public sealed record EncounterSlot8GO : EncounterSlotGO, IFixedOTFriendship
 
     protected override void SetEncounterMoves(PKM pk, GameVersion version, int level)
     {
-        var moves = GetInitialMoves(level);
+        Span<ushort> moves = stackalloc ushort[4];
+        GetInitialMoves(level, moves);
         pk.SetMoves(moves);
         pk.SetMaximumPPCurrent(moves);
     }
 
-    public ReadOnlySpan<int> GetInitialMoves(int level) => MoveLevelUp.GetEncounterMoves(Species, Form, level, OriginGroup);
+    public void GetInitialMoves(int level, Span<ushort> moves) => MoveLevelUp.GetEncounterMoves(moves, Species, Form, level, OriginGroup);
+
+    public ReadOnlySpan<ushort> GetInitialMoves(int level)
+    {
+        var result = new ushort[4];
+        GetInitialMoves(level, result);
+        return result;
+    }
 
     public override EncounterMatchRating GetMatchRating(PKM pk)
     {
@@ -193,6 +200,9 @@ public sealed record EncounterSlot8GO : EncounterSlotGO, IFixedOTFriendship
     }
 }
 
+/// <summary>
+/// Enumerates the possible ways Pokémon GO data can be initialized with when imported to HOME.
+/// </summary>
 public enum PogoImportFormat : byte
 {
     PK7 = 0,

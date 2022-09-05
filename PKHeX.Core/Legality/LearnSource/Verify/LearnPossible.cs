@@ -36,7 +36,9 @@ public static class LearnPossible
             return;
         if (enc is EncounterSlot8GO g)
         {
-            SetAll(g.GetInitialMoves(pk.Met_Level), result);
+            Span<ushort> initial = stackalloc ushort[4];
+            g.GetInitialMoves(pk.Met_Level, initial);
+            SetAll(initial, result);
         }
         else if (enc.Generation >= 6)
         {
@@ -47,7 +49,7 @@ public static class LearnPossible
         }
     }
 
-    private static void SetAll(ReadOnlySpan<int> moves, Span<bool> result)
+    private static void SetAll(ReadOnlySpan<ushort> moves, Span<bool> result)
     {
         foreach (var move in moves)
             result[move] = true;

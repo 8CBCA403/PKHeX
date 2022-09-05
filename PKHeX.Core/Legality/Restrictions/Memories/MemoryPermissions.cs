@@ -16,58 +16,58 @@ public static class MemoryPermissions
 {
     public static bool IsMemoryOfKnownMove(int memory) => memory is 48 or 80 or 81;
 
-    public static bool CanWinLotoID(int generation, int item)
+    public static bool CanWinLotoID(EntityContext context, int item)
     {
-        var context = Memories.GetContext(generation);
-        return context.CanWinLotoID(item);
+        var mem = Memories.GetContext(context);
+        return mem.CanWinLotoID(item);
     }
 
-    public static bool CanHoldItem(int generation, int item)
+    public static bool CanHoldItem(EntityContext context, int item)
     {
-        var context = Memories.GetContext(generation);
-        return context.CanHoldItem(item);
+        var mem = Memories.GetContext(context);
+        return mem.CanHoldItem(item);
     }
 
-    public static bool CanPlantBerry(int generation, int item)
+    public static bool CanPlantBerry(EntityContext context, int item)
     {
-        var context = Memories.GetContext(generation);
-        return context.CanPlantBerry(item);
+        var mem = Memories.GetContext(context);
+        return mem.CanPlantBerry(item);
     }
 
-    public static bool CanUseItemGeneric(int generation, int item)
+    public static bool CanUseItemGeneric(EntityContext context, int item)
     {
-        var context = Memories.GetContext(generation);
-        return context.CanUseItemGeneric(item);
+        var mem = Memories.GetContext(context);
+        return mem.CanUseItemGeneric(item);
     }
 
-    public static bool CanUseItem(int generation, int item, int species)
+    public static bool CanUseItem(EntityContext context, int item, ushort species)
     {
-        if (IsUsedKeyItemUnspecific(generation, item))
+        if (IsUsedKeyItemUnspecific(context, item))
             return true;
-        if (IsUsedKeyItemSpecific(generation, item, species))
+        if (IsUsedKeyItemSpecific(context, item, species))
             return true;
         return true; // todo
     }
 
-    private static bool IsUsedKeyItemUnspecific(int generation, int item)
+    private static bool IsUsedKeyItemUnspecific(EntityContext context, int item)
     {
-        var context = Memories.GetContext(generation);
-        return context.IsUsedKeyItemUnspecific(item);
+        var mem = Memories.GetContext(context);
+        return mem.IsUsedKeyItemUnspecific(item);
     }
 
-    private static bool IsUsedKeyItemSpecific(int generation, int item, int species)
+    private static bool IsUsedKeyItemSpecific(EntityContext context, int item, ushort species)
     {
-        var context = Memories.GetContext(generation);
-        return context.IsUsedKeyItemSpecific(item, species);
+        var mem = Memories.GetContext(context);
+        return mem.IsUsedKeyItemSpecific(item, species);
     }
 
-    public static bool CanBuyItem(int generation, int item, GameVersion version = GameVersion.Any)
+    public static bool CanBuyItem(EntityContext context, int item, GameVersion version = GameVersion.Any)
     {
-        var context = Memories.GetContext(generation);
-        return context.CanBuyItem(item, version);
+        var mem = Memories.GetContext(context);
+        return mem.CanBuyItem(item, version);
     }
 
-    public static bool CanKnowMove(PKM pk, MemoryVariableSet memory, int gen, LegalInfo info, bool battleOnly = false)
+    public static bool CanKnowMove(PKM pk, MemoryVariableSet memory, EntityContext gen, LegalInfo info, bool battleOnly = false)
     {
         var move = memory.Variable;
         if (move == 0)
@@ -105,7 +105,7 @@ public static class MemoryPermissions
                 case (int)BehemothBash when pk.Species == (int)Zamazenta:
                     return true;
             }
-            if (gen == 8 && MoveInfo.IsDynamaxMove(move))
+            if (gen == EntityContext.Gen8 && MoveInfo.IsMoveDynamax(move))
                 return true;
             if (pk.Species == (int)Ditto)
             {
@@ -113,7 +113,7 @@ public static class MemoryPermissions
                     return false;
                 return gen switch
                 {
-                    8 => move <= Legal.MaxMoveID_8_R2 && !MoveInfo.IsDummiedMove(pk, move),
+                    EntityContext.Gen8 => move <= Legal.MaxMoveID_8_R2 && !MoveInfo.IsDummiedMove(pk, move),
                     _ => move <= Legal.MaxMoveID_6_AO,
                 };
             }
@@ -129,47 +129,47 @@ public static class MemoryPermissions
         return enc is EncounterEgg { Generation: < 6 }; // egg moves that are no longer in the movepool
     }
 
-    public static bool GetCanRelearnMove(PKM pk, int move, int generation, EvolutionHistory history, IEncounterTemplate enc)
+    public static bool GetCanRelearnMove(PKM pk, ushort move, EntityContext context, EvolutionHistory history, IEncounterTemplate enc)
     {
-        if (generation == 6)
+        if (context == EntityContext.Gen6)
         {
             Span<MoveResult> result = stackalloc MoveResult[1];
-            Span<int> moves = stackalloc int[] { move };
+            Span<ushort> moves = stackalloc ushort[] { move };
             LearnGroup6.Instance.Check(result, moves, pk, history, enc, MoveSourceType.Reminder, LearnOption.AtAnyTime);
             return result[0].Valid;
         }
-        if (generation == 8)
+        if (context == EntityContext.Gen8)
         {
             Span<MoveResult> result = stackalloc MoveResult[1];
-            Span<int> moves = stackalloc int[] { move };
+            Span<ushort> moves = stackalloc ushort[] { move };
             LearnGroup8.Instance.Check(result, moves, pk, history, enc, MoveSourceType.Reminder, LearnOption.AtAnyTime);
             return result[0].Valid;
         }
         return false;
     }
 
-    private static bool GetCanKnowMove(PKM pk, int move, int generation, EvolutionHistory history, IEncounterTemplate enc)
+    private static bool GetCanKnowMove(PKM pk, ushort move, EntityContext context, EvolutionHistory history, IEncounterTemplate enc)
     {
         if (pk.Species == (int)Smeargle)
-            return Legal.IsValidSketch(move, generation);
+            return MoveInfo.IsValidSketch(move, context);
 
         ILearnGroup game;
-        if (generation == 6)
+        if (context == EntityContext.Gen6)
             game = LearnGroup6.Instance;
-        else if (generation == 8)
+        else if (context == EntityContext.Gen8)
             game = LearnGroup8.Instance;
         else
             return false;
 
         Span<MoveResult> result = stackalloc MoveResult[1];
-        Span<int> moves = stackalloc int[] { move };
+        Span<ushort> moves = stackalloc ushort[] { move };
         LearnVerifierHistory.MarkAndIterate(result, moves, enc, pk, history, game, MoveSourceType.All, LearnOption.AtAnyTime);
         return result[0].Valid;
     }
 
-    public static bool GetCanBeCaptured(int species, int gen, GameVersion version) => gen switch
+    public static bool GetCanBeCaptured(ushort species, EntityContext gen, GameVersion version) => gen switch
     {
-        6 => version switch
+        EntityContext.Gen6 => version switch
         {
             GameVersion.Any => GetCanBeCaptured(species, SlotsX, StaticX) || GetCanBeCaptured(species, SlotsY, StaticY)
                                                                           || GetCanBeCaptured(species, SlotsA, StaticA) || GetCanBeCaptured(species, SlotsO, StaticO),
@@ -181,7 +181,7 @@ public static class MemoryPermissions
             GameVersion.OR => GetCanBeCaptured(species, SlotsO, StaticO),
             _ => false,
         },
-        8 => version switch
+        EntityContext.Gen8 => version switch
         {
             GameVersion.Any => GetCanBeCaptured(species, SlotsSW.Concat(SlotsSH), StaticSW.Concat(StaticSH)),
             GameVersion.SW => GetCanBeCaptured(species, SlotsSW, StaticSW),
@@ -191,7 +191,7 @@ public static class MemoryPermissions
         _ => false,
     };
 
-    private static bool GetCanBeCaptured(int species, IEnumerable<EncounterArea> area, IEnumerable<EncounterStatic> statics)
+    private static bool GetCanBeCaptured(ushort species, IEnumerable<EncounterArea> area, IEnumerable<EncounterStatic> statics)
     {
         if (area.Any(loc => loc.HasSpecies(species)))
             return true;
@@ -200,7 +200,7 @@ public static class MemoryPermissions
         return false;
     }
 
-    public static bool GetCanDynamaxTrainer(int species, int gen, GameVersion version)
+    public static bool GetCanDynamaxTrainer(ushort species, int gen, GameVersion version)
     {
         if (gen != 8)
             return false;
@@ -214,11 +214,11 @@ public static class MemoryPermissions
     }
 
     // exclusive to version
-    private static bool IsDynamaxSW(int species) => species is (int)Machamp or (int)Gigalith or (int)Conkeldurr or (int)Coalossal or (int)Flapple;
-    private static bool IsDynamaxSH(int species) => species is (int)Gengar or (int)Lapras or (int)Dusknoir or (int)Froslass or (int)Appletun;
+    private static bool IsDynamaxSW(ushort species) => species is (int)Machamp or (int)Gigalith or (int)Conkeldurr or (int)Coalossal or (int)Flapple;
+    private static bool IsDynamaxSH(ushort species) => species is (int)Gengar or (int)Lapras or (int)Dusknoir or (int)Froslass or (int)Appletun;
 
     // common to SW & SH
-    private static readonly HashSet<int> DynamaxTrainer_SWSH = new()
+    private static readonly HashSet<ushort> DynamaxTrainer_SWSH = new()
     {
         (int)Venusaur,
         (int)Blastoise,
@@ -249,9 +249,9 @@ public static class MemoryPermissions
         (int)Urshifu,
     };
 
-    public static bool GetCanFishSpecies(int species, int gen, GameVersion version) => gen switch
+    public static bool GetCanFishSpecies(ushort species, EntityContext context, GameVersion version) => context switch
     {
-        6 => version switch
+        EntityContext.Gen6 => version switch
         {
             GameVersion.Any => FishingSpecies_XY.Contains(species) || FishingSpecies_AO.Contains(species)
                                                                    || IsFishingSpeciesX(species) || IsFishingSpeciesY(species),
@@ -262,7 +262,7 @@ public static class MemoryPermissions
             GameVersion.OR or GameVersion.AS => FishingSpecies_AO.Contains(species),
             _ => false,
         },
-        8 => version switch
+        EntityContext.Gen8 => version switch
         {
             GameVersion.Any or GameVersion.SW or GameVersion.SH => FishingSpecies_SWSH.Contains(species),
             _ => false,
@@ -270,7 +270,7 @@ public static class MemoryPermissions
         _ => false,
     };
 
-    private static readonly HashSet<int> FishingSpecies_SWSH = new()
+    private static readonly HashSet<ushort> FishingSpecies_SWSH = new()
     {
         (int)Shellder, (int)Cloyster,
         (int)Krabby,
@@ -297,7 +297,7 @@ public static class MemoryPermissions
         (int)Arrokuda, (int)Barraskewda,
     };
 
-    private static readonly HashSet<int> FishingSpecies_AO = new()
+    private static readonly HashSet<ushort> FishingSpecies_AO = new()
     {
         (int)Tentacool,
         (int)Horsea, (int)Seadra,
@@ -315,11 +315,11 @@ public static class MemoryPermissions
     };
 
     // exclusive to version
-    private static bool IsFishingSpeciesX(int species) => species is (int)Staryu or (int)Starmie or (int)Huntail or (int)Clauncher or (int)Clawitzer;
-    private static bool IsFishingSpeciesY(int species) => species is (int)Shellder or (int)Cloyster or (int)Gorebyss or (int)Skrelp or (int)Dragalge;
+    private static bool IsFishingSpeciesX(ushort species) => species is (int)Staryu or (int)Starmie or (int)Huntail or (int)Clauncher or (int)Clawitzer;
+    private static bool IsFishingSpeciesY(ushort species) => species is (int)Shellder or (int)Cloyster or (int)Gorebyss or (int)Skrelp or (int)Dragalge;
 
     // common to X & Y
-    private static readonly HashSet<int> FishingSpecies_XY = new()
+    private static readonly HashSet<ushort> FishingSpecies_XY = new()
     {
         (int)Poliwag, (int)Poliwhirl, (int)Poliwrath, (int)Politoed,
         (int)Horsea, (int)Seadra,

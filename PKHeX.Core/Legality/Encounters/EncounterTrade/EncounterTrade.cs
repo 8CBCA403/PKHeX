@@ -11,8 +11,8 @@ namespace PKHeX.Core;
 /// </remarks>
 public abstract record EncounterTrade(GameVersion Version) : IEncounterable, IMoveset, IEncounterMatch
 {
-    public int Species { get; init; }
-    public int Form { get; init; }
+    public ushort Species { get; init; }
+    public byte Form { get; init; }
     public byte Level { get; init; }
     public virtual byte LevelMin => Level;
     public byte LevelMax => 100;
@@ -37,8 +37,8 @@ public abstract record EncounterTrade(GameVersion Version) : IEncounterable, IMo
     public ushort TID { get; init; }
     public ushort SID { get; init; }
 
-    public IReadOnlyList<int> Moves { get; init; } = Array.Empty<int>();
-    public IReadOnlyList<int> IVs { get; init; } = Array.Empty<int>();
+    public Moveset Moves { get; init; }
+    public IndividualValueSet IVs { get; init; }
 
     public Ball FixedBall => (Ball)Ball;
     public bool EggEncounter => false;
@@ -83,7 +83,7 @@ public abstract record EncounterTrade(GameVersion Version) : IEncounterable, IMo
         if (level == 0)
             level = Math.Max((byte)1, LevelMin);
 
-        int species = Species;
+        ushort species = Species;
         if (EvolveOnTrade)
             species++;
 
@@ -150,17 +150,26 @@ public abstract record EncounterTrade(GameVersion Version) : IEncounterable, IMo
 
     protected void SetIVs(PKM pk)
     {
-        if (IVs.Count != 0)
-            pk.SetRandomIVsTemplate((int[])IVs, 0);
+        if (IVs.IsSpecified)
+            pk.SetRandomIVsTemplate(IVs, 0);
         else
             pk.SetRandomIVs(minFlawless: 3);
     }
 
     private void SetMoves(PKM pk, GameVersion version, int level)
     {
-        var moves = Moves.Count != 0 ? Moves : MoveLevelUp.GetEncounterMoves(pk, level, version);
-        pk.SetMoves((int[])moves);
-        pk.SetMaximumPPCurrent((int[])moves);
+        if (Moves.HasMoves)
+        {
+            pk.SetMoves(Moves);
+            pk.SetMaximumPPCurrent(Moves);
+        }
+        else
+        {
+            Span<ushort> moves = stackalloc ushort[4];
+            MoveLevelUp.GetEncounterMoves(moves, pk, level, version);
+            pk.SetMoves(moves);
+            pk.SetMaximumPPCurrent(moves);
+        }
     }
 
     private void SetEggMetData(PKM pk, DateTime time)
@@ -178,9 +187,9 @@ public abstract record EncounterTrade(GameVersion Version) : IEncounterable, IMo
 
     public virtual bool IsMatchExact(PKM pk, EvoCriteria evo)
     {
-        if (IVs.Count != 0)
+        if (IVs.IsSpecified)
         {
-            if (!Legal.GetIsFixedIVSequenceValidSkipRand((int[])IVs, pk))
+            if (!Legal.GetIsFixedIVSequenceValidSkipRand(IVs, pk))
                 return false;
         }
 

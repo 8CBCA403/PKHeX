@@ -5,7 +5,7 @@ namespace PKHeX.Core;
 
 /// <summary> Generation 8 <see cref="PKM"/> format. </summary>
 public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
-    IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6, IRibbonSetCommon7, IRibbonSetCommon8, IRibbonSetMark8, IRibbonSetAffixed, ITechRecord8, ISociability,
+    IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6, IRibbonSetMemory6, IRibbonSetCommon7, IRibbonSetCommon8, IRibbonSetMark8, IRibbonSetAffixed, ITechRecord8, ISociability,
     IContestStats, IContestStatsMutable, IHyperTrain, IScaledSize, IGigantamax, IFavorite, IDynamaxLevel, IRibbonIndex, IHandlerLanguage, IFormArgument, IHomeTrack, IBattleVersion, ITrainerMemories
 {
     protected G8PKM() : base(PokeCrypto.SIZE_8PARTY) { }
@@ -30,7 +30,7 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
 
     // Simple Generated Attributes
     public ReadOnlySpan<bool> TechRecordPermitFlags => PersonalInfo.TMHM.AsSpan(PersonalInfo8SWSH.CountTM);
-    public ReadOnlySpan<int> TechRecordPermitIndexes => LearnSource8SWSH.TR_SWSH.AsSpan();
+    public ReadOnlySpan<ushort> TechRecordPermitIndexes => LearnSource8SWSH.TR_SWSH.AsSpan();
     public override int CurrentFriendship
     {
         get => CurrentHandler == 0 ? OT_Friendship : HT_Friendship;
@@ -115,7 +115,7 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
 
     // Structure
     #region Block A
-    public override int Species { get => ReadUInt16LittleEndian(Data.AsSpan(0x08)); set => WriteUInt16LittleEndian(Data.AsSpan(0x08), (ushort)value); }
+    public override ushort Species { get => ReadUInt16LittleEndian(Data.AsSpan(0x08)); set => WriteUInt16LittleEndian(Data.AsSpan(0x08), value); }
     public override int HeldItem { get => ReadUInt16LittleEndian(Data.AsSpan(0x0A)); set => WriteUInt16LittleEndian(Data.AsSpan(0x0A), (ushort)value); }
     public override int TID { get => ReadUInt16LittleEndian(Data.AsSpan(0x0C)); set => WriteUInt16LittleEndian(Data.AsSpan(0x0C), (ushort)value); }
     public override int SID { get => ReadUInt16LittleEndian(Data.AsSpan(0x0E)); set => WriteUInt16LittleEndian(Data.AsSpan(0x0E), (ushort)value); }
@@ -136,7 +136,7 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
     public override int Gender { get => (Data[0x22] >> 2) & 0x3; set => Data[0x22] = (byte)((Data[0x22] & 0xF3) | (value << 2)); }
     // 0x23 alignment unused
 
-    public override int Form { get => ReadUInt16LittleEndian(Data.AsSpan(0x24)); set => WriteUInt16LittleEndian(Data.AsSpan(0x24), (ushort)value); }
+    public override byte Form { get => Data[0x24]; set => WriteUInt16LittleEndian(Data.AsSpan(0x24), value); }
     public override int EV_HP { get => Data[0x26]; set => Data[0x26] = (byte)value; }
     public override int EV_ATK { get => Data[0x27]; set => Data[0x27] = (byte)value; }
     public override int EV_DEF { get => Data[0x28]; set => Data[0x28] = (byte)value; }
@@ -227,8 +227,8 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
     public bool RibbonMarkBlizzard { get => FlagUtil.GetFlag(Data, 0x3B, 5); set => FlagUtil.SetFlag(Data, 0x3B, 5, value); }
     public bool RibbonMarkDry { get => FlagUtil.GetFlag(Data, 0x3B, 6); set => FlagUtil.SetFlag(Data, 0x3B, 6, value); }
     public bool RibbonMarkSandstorm { get => FlagUtil.GetFlag(Data, 0x3B, 7); set => FlagUtil.SetFlag(Data, 0x3B, 7, value); }
-    public int RibbonCountMemoryContest { get => Data[0x3C]; set => HasContestMemoryRibbon = (Data[0x3C] = (byte)value) != 0; }
-    public int RibbonCountMemoryBattle { get => Data[0x3D]; set => HasBattleMemoryRibbon = (Data[0x3D] = (byte)value) != 0; }
+    public byte RibbonCountMemoryContest { get => Data[0x3C]; set => HasContestMemoryRibbon = (Data[0x3C] = value) != 0; }
+    public byte RibbonCountMemoryBattle  { get => Data[0x3D]; set => HasBattleMemoryRibbon =  (Data[0x3D] = value) != 0; }
     // 0x3E padding
     // 0x3F padding
 
@@ -335,10 +335,10 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
 
     // 2 bytes for \0, automatically handled above
 
-    public override int Move1 { get => ReadUInt16LittleEndian(Data.AsSpan(0x72)); set => WriteUInt16LittleEndian(Data.AsSpan(0x72), (ushort)value); }
-    public override int Move2 { get => ReadUInt16LittleEndian(Data.AsSpan(0x74)); set => WriteUInt16LittleEndian(Data.AsSpan(0x74), (ushort)value); }
-    public override int Move3 { get => ReadUInt16LittleEndian(Data.AsSpan(0x76)); set => WriteUInt16LittleEndian(Data.AsSpan(0x76), (ushort)value); }
-    public override int Move4 { get => ReadUInt16LittleEndian(Data.AsSpan(0x78)); set => WriteUInt16LittleEndian(Data.AsSpan(0x78), (ushort)value); }
+    public override ushort Move1 { get => ReadUInt16LittleEndian(Data.AsSpan(0x72)); set => WriteUInt16LittleEndian(Data.AsSpan(0x72), value); }
+    public override ushort Move2 { get => ReadUInt16LittleEndian(Data.AsSpan(0x74)); set => WriteUInt16LittleEndian(Data.AsSpan(0x74), value); }
+    public override ushort Move3 { get => ReadUInt16LittleEndian(Data.AsSpan(0x76)); set => WriteUInt16LittleEndian(Data.AsSpan(0x76), value); }
+    public override ushort Move4 { get => ReadUInt16LittleEndian(Data.AsSpan(0x78)); set => WriteUInt16LittleEndian(Data.AsSpan(0x78), value); }
 
     public override int Move1_PP { get => Data[0x7A]; set => Data[0x7A] = (byte)value; }
     public override int Move2_PP { get => Data[0x7B]; set => Data[0x7B] = (byte)value; }
@@ -349,10 +349,10 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
     public override int Move3_PPUps { get => Data[0x80]; set => Data[0x80] = (byte)value; }
     public override int Move4_PPUps { get => Data[0x81]; set => Data[0x81] = (byte)value; }
 
-    public override int RelearnMove1 { get => ReadUInt16LittleEndian(Data.AsSpan(0x82)); set => WriteUInt16LittleEndian(Data.AsSpan(0x82), (ushort)value); }
-    public override int RelearnMove2 { get => ReadUInt16LittleEndian(Data.AsSpan(0x84)); set => WriteUInt16LittleEndian(Data.AsSpan(0x84), (ushort)value); }
-    public override int RelearnMove3 { get => ReadUInt16LittleEndian(Data.AsSpan(0x86)); set => WriteUInt16LittleEndian(Data.AsSpan(0x86), (ushort)value); }
-    public override int RelearnMove4 { get => ReadUInt16LittleEndian(Data.AsSpan(0x88)); set => WriteUInt16LittleEndian(Data.AsSpan(0x88), (ushort)value); }
+    public override ushort RelearnMove1 { get => ReadUInt16LittleEndian(Data.AsSpan(0x82)); set => WriteUInt16LittleEndian(Data.AsSpan(0x82), value); }
+    public override ushort RelearnMove2 { get => ReadUInt16LittleEndian(Data.AsSpan(0x84)); set => WriteUInt16LittleEndian(Data.AsSpan(0x84), value); }
+    public override ushort RelearnMove3 { get => ReadUInt16LittleEndian(Data.AsSpan(0x86)); set => WriteUInt16LittleEndian(Data.AsSpan(0x86), value); }
+    public override ushort RelearnMove4 { get => ReadUInt16LittleEndian(Data.AsSpan(0x88)); set => WriteUInt16LittleEndian(Data.AsSpan(0x88), value); }
 
     public override int Stat_HPCurrent { get => ReadUInt16LittleEndian(Data.AsSpan(0x8A)); set => WriteUInt16LittleEndian(Data.AsSpan(0x8A), (ushort)value); }
 
@@ -410,7 +410,7 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
         FlagUtil.SetFlag(Data, 0xCE + ofs, index & 7, value);
     }
 
-    public bool GetPokeJobFlagAny() => Array.FindIndex(Data, 0xCE, 14, z => z != 0) >= 0;
+    public bool GetPokeJobFlagAny() => Array.FindIndex(Data, 0xCE, 14, static z => z != 0) >= 0;
 
     public void ClearPokeJobFlags() => Data.AsSpan(0xCE, 14).Clear();
 
@@ -479,7 +479,7 @@ public abstract class G8PKM : PKM, ISanityChecksum, IMoveReset,
         FlagUtil.SetFlag(Data, 0x127 + ofs, index & 7, value);
     }
 
-    public bool GetMoveRecordFlagAny() => Array.FindIndex(Data, 0x127, 14, z => z != 0) >= 0;
+    public bool GetMoveRecordFlagAny() => Array.FindIndex(Data, 0x127, 14, static z => z != 0) >= 0;
 
     public void ClearMoveRecordFlags() => Data.AsSpan(0x127, 14).Clear();
 

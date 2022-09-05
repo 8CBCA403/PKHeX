@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using static PKHeX.Core.Species;
 
 namespace PKHeX.Core;
@@ -20,13 +19,26 @@ public static class ShowdownParsing
     /// <param name="species">Species ID the form belongs to</param>
     /// <param name="context">Format the form name should appear in</param>
     /// <returns>Zero (base form) if no form matches the input string.</returns>
-    public static int GetFormFromString(string name, GameStrings strings, int species, EntityContext context)
+    public static byte GetFormFromString(string name, GameStrings strings, ushort species, EntityContext context)
     {
         if (name.Length == 0)
             return 0;
 
-        var formStrings = FormConverter.GetFormList(species, strings.Types, strings.forms, genderForms, context);
-        return Math.Max(0, Array.FindIndex(formStrings, z => z.Contains(name)));
+        var forms = FormConverter.GetFormList(species, strings.Types, strings.forms, genderForms, context);
+        if (forms.Length < 1)
+            return 0;
+
+        // Find first matching index that matches any case.
+        for (byte i = 0; i < forms.Length; i++)
+        {
+            var form = forms[i];
+            var index = form.IndexOf(name, StringComparison.OrdinalIgnoreCase);
+            if (index != -1)
+                return i;
+        }
+
+        // No match, assume default 0 form.
+        return 0;
     }
 
     /// <summary>
@@ -36,9 +48,9 @@ public static class ShowdownParsing
     /// <param name="strings"></param>
     /// <param name="species"></param>
     /// <param name="context"></param>
-    public static string GetStringFromForm(int form, GameStrings strings, int species, EntityContext context)
+    public static string GetStringFromForm(byte form, GameStrings strings, ushort species, EntityContext context)
     {
-        if (form <= 0)
+        if (form == 0)
             return string.Empty;
 
         var forms = FormConverter.GetFormList(species, strings.Types, strings.forms, genderForms, context);
@@ -52,7 +64,7 @@ public static class ShowdownParsing
     /// </summary>
     /// <param name="species">Species ID</param>
     /// <param name="form">PKHeX form name</param>
-    public static string GetShowdownFormName(int species, string form)
+    public static string GetShowdownFormName(ushort species, string form)
     {
         if (form.Length == 0)
         {
@@ -68,7 +80,7 @@ public static class ShowdownParsing
             (int)Basculin when form is "Blue"         => "Blue-Striped",
             (int)Vivillon when form is "Poké Ball"    => "Pokeball",
             (int)Zygarde                              => form.Replace("-C", string.Empty).Replace("50%", string.Empty),
-            (int)Minior   when form.StartsWith("M-", StringComparison.Ordinal)  => MiniorFormName,
+            (int)Minior   when form.StartsWith("M-", StringComparison.OrdinalIgnoreCase)  => MiniorFormName,
             (int)Minior                               => form.Replace("C-", string.Empty),
             (int)Necrozma when form is "Dusk"         => $"{form}-Mane",
             (int)Necrozma when form is "Dawn"         => $"{form}-Wings",
@@ -88,7 +100,7 @@ public static class ShowdownParsing
     /// <param name="species">Species ID</param>
     /// <param name="form">Showdown form name</param>
     /// <param name="ability">Showdown ability ID</param>
-    public static string SetShowdownFormName(int species, string form, int ability)
+    public static string SetShowdownFormName(ushort species, string form, int ability)
     {
         if (form.Length != 0)
             form = form.Replace(' ', '-'); // inconsistencies are great
@@ -108,7 +120,7 @@ public static class ShowdownParsing
             (int)Rockruff   when ability == 020         => "Dusk", // Rockruff-1
             (int)Urshifu or (int)Pikachu or (int)Alcremie => form.Replace('-', ' '), // Strike and Cosplay
 
-            _ => Legal.Totem_USUM.Contains(species) && form.EndsWith("Totem", StringComparison.Ordinal) ? "Large" : form,
+            _ => Legal.Totem_USUM.Contains(species) && form.EndsWith("Totem", StringComparison.OrdinalIgnoreCase) ? "Large" : form,
         };
     }
 
@@ -154,8 +166,29 @@ public static class ShowdownParsing
     /// Fetches ShowdownSet lines from the input <see cref="PKM"/> data.
     /// </summary>
     /// <param name="data">Pokémon data to summarize.</param>
+    /// <param name="lang">Localization setting</param>
     /// <returns>Consumable list of <see cref="ShowdownSet.Text"/> lines.</returns>
-    public static IEnumerable<string> GetShowdownSets(IEnumerable<PKM> data) => data.Where(p => p.Species != 0).Select(GetShowdownText);
+    public static IEnumerable<string> GetShowdownText(IEnumerable<PKM> data, string lang = ShowdownSet.DefaultLanguage)
+    {
+        var sets = GetShowdownSets(data);
+        foreach (var set in sets)
+            yield return set.LocalizedText(lang);
+    }
+
+    /// <summary>
+    /// Fetches ShowdownSet lines from the input <see cref="PKM"/> data.
+    /// </summary>
+    /// <param name="data">Pokémon data to summarize.</param>
+    /// <returns>Consumable list of <see cref="ShowdownSet.Text"/> lines.</returns>
+    public static IEnumerable<ShowdownSet> GetShowdownSets(IEnumerable<PKM> data)
+    {
+        foreach (var pk in data)
+        {
+            if (pk.Species == 0)
+                continue;
+            yield return new ShowdownSet(pk);
+        }
+    }
 
     /// <summary>
     /// Fetches ShowdownSet lines from the input <see cref="PKM"/> data, and combines it into one string.
@@ -163,7 +196,7 @@ public static class ShowdownParsing
     /// <param name="data">Pokémon data to summarize.</param>
     /// <param name="separator">Splitter between each set.</param>
     /// <returns>Single string containing all <see cref="ShowdownSet.Text"/> lines.</returns>
-    public static string GetShowdownSets(IEnumerable<PKM> data, string separator) => string.Join(separator, GetShowdownSets(data));
+    public static string GetShowdownSets(IEnumerable<PKM> data, string separator) => string.Join(separator, GetShowdownText(data));
 
     /// <summary>
     /// Gets a localized string preview of the provided <see cref="pk"/>.

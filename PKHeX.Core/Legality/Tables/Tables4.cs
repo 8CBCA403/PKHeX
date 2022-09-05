@@ -90,7 +90,7 @@ public static partial class Legal
     internal static readonly ushort[] HeldItems_HGSS = ArrayUtil.ConcatAll(Pouch_Items_HGSS, Pouch_Mail_HGSS, Pouch_Medicine_HGSS, Pouch_Berries_HGSS, Pouch_Ball_Pt, Pouch_TMHM_HGSS.Slice(0, Pouch_TMHM_HGSS.Length - 8));
     #endregion
 
-    internal static readonly bool[] ReleasedHeldItems_4 = GetPermitList(MaxItemID_4_HGSS, HeldItems_HGSS, new ushort[]
+    internal static readonly bool[] ReleasedHeldItems_4 = GetPermitList(MaxItemID_4_HGSS, HeldItems_HGSS, stackalloc ushort[]
     {
         005, // Safari Ball
         016, // Cherish Ball
@@ -99,7 +99,7 @@ public static partial class Legal
         500, // Park Ball
     });
 
-    internal static readonly HashSet<int> ValidMet_DP = new()
+    internal static readonly HashSet<ushort> ValidMet_DP = new()
     {
         // 063: Flower Paradise unreleased DP event
         // 079: Newmoon Island unreleased DP event
@@ -113,12 +113,12 @@ public static partial class Legal
         101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111,
     };
 
-    internal static readonly HashSet<int> ValidMet_Pt = new(ValidMet_DP)
+    internal static readonly HashSet<ushort> ValidMet_Pt = new(ValidMet_DP)
     {
         63, 79, 85, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125,
     };
 
-    internal static readonly HashSet<int> ValidMet_HGSS = new()
+    internal static readonly HashSet<ushort> ValidMet_HGSS = new()
     {
         080, 112, 113, 114, 115, 116,
         126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
@@ -129,22 +129,27 @@ public static partial class Legal
         221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232,      234,                               //233: Pokéwalker
     };
 
-    internal static readonly HashSet<int> ValidMet_4 = new(ValidMet_Pt.Concat(ValidMet_HGSS));
+    internal static readonly HashSet<ushort> ValidMet_4 = new(ValidMet_Pt.Concat(ValidMet_HGSS));
 
-    internal static readonly HashSet<int> GiftEggLocation4 = new()
+    internal static readonly HashSet<ushort> GiftEggLocation4 = new()
     {
         2009, 2010, 2011, 2013, 2014,
     };
 
     internal static int GetTransfer45MetLocation(PKM pk)
     {
+        // Everything except for crown beasts and Celebi get the default transfer location.
+        // Crown beasts and Celebi are 100% identifiable by the species ID and fateful encounter, originating from Gen4.
         if (!pk.Gen4 || !pk.FatefulEncounter)
             return Locations.Transfer4; // Pokétransfer
 
         return pk.Species switch
         {
-            243 or 244 or 245 => Locations.Transfer4_CrownUnused, // Beast
-            251 => Locations.Transfer4_CelebiUnused, // Celebi
+            // Crown Beast
+            (int)Species.Raikou or (int)Species.Entei or (int)Species.Suicune => Locations.Transfer4_CrownUnused,
+            // Celebi
+            (int)Species.Celebi => Locations.Transfer4_CelebiUnused,
+            // Default
             _ => Locations.Transfer4,
         };
     }

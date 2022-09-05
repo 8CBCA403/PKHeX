@@ -3,10 +3,13 @@ using static PKHeX.Core.Species;
 namespace PKHeX.Core;
 
 /// <summary>
-/// Dynamax Level used by <see cref="GameVersion.SWSH"/> format entity data.
+/// Exposes info about Dynamax potential
 /// </summary>
 public interface IDynamaxLevel
 {
+    /// <summary>
+    /// Dynamax Level used by <see cref="GameVersion.SWSH"/> format entity data.
+    /// </summary>
     byte DynamaxLevel { get; set; }
 }
 
@@ -27,7 +30,7 @@ public static class DynamaxLevelExtensions
     /// <summary>
     /// Checks if the species is prevented from gaining any <see cref="IDynamaxLevel.DynamaxLevel"/> via candy in <see cref="GameVersion.SWSH"/>.
     /// </summary>
-    private static bool CanHaveDynamaxLevel(int species)
+    private static bool CanHaveDynamaxLevel(ushort species)
     {
         return species is not ((int)Zacian or (int)Zamazenta or (int)Eternatus);
     }

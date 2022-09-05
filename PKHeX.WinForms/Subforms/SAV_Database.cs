@@ -25,6 +25,7 @@ public partial class SAV_Database : Form
     public SAV_Database(PKMEditor f1, SAVEditor saveditor)
     {
         InitializeComponent();
+        WinFormsUtil.TranslateInterface(this, Main.CurrentLanguage);
         var UC_Builder = new EntityInstructionBuilder(() => f1.PreparePKM())
         {
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
@@ -33,8 +34,6 @@ public partial class SAV_Database : Form
             ReadOnly = true,
         };
         Tab_Advanced.Controls.Add(UC_Builder);
-
-        WinFormsUtil.TranslateInterface(this, Main.CurrentLanguage);
 
         SAV = saveditor.SAV;
         BoxView = saveditor;
@@ -492,7 +491,7 @@ public partial class SAV_Database : Form
             Version = WinFormsUtil.GetIndex(CB_GameOrigin),
             HiddenPowerType = WinFormsUtil.GetIndex(CB_HPType),
 
-            Species = WinFormsUtil.GetIndex(CB_Species),
+            Species = GetU16(CB_Species),
             Ability = WinFormsUtil.GetIndex(CB_Ability),
             Nature = WinFormsUtil.GetIndex(CB_Nature),
             Item = WinFormsUtil.GetIndex(CB_HeldItem),
@@ -505,10 +504,18 @@ public partial class SAV_Database : Form
             IVType = CB_IV.SelectedIndex,
         };
 
-        settings.AddMove(WinFormsUtil.GetIndex(CB_Move1));
-        settings.AddMove(WinFormsUtil.GetIndex(CB_Move2));
-        settings.AddMove(WinFormsUtil.GetIndex(CB_Move3));
-        settings.AddMove(WinFormsUtil.GetIndex(CB_Move4));
+        static ushort GetU16(ListControl cb)
+        {
+            var val = WinFormsUtil.GetIndex(cb);
+            if (val <= 0)
+                return 0;
+            return (ushort)val;
+        }
+
+        settings.AddMove(GetU16(CB_Move1));
+        settings.AddMove(GetU16(CB_Move2));
+        settings.AddMove(GetU16(CB_Move3));
+        settings.AddMove(GetU16(CB_Move4));
 
         if (CHK_Shiny.CheckState != CheckState.Indeterminate)
             settings.SearchShiny = CHK_Shiny.CheckState == CheckState.Checked;

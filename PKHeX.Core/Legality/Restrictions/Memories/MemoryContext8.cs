@@ -6,6 +6,8 @@ namespace PKHeX.Core;
 public sealed partial class MemoryContext8 : MemoryContext
 {
     private const int MAX_MEMORY_ID_SWSH = 89;
+    public static readonly MemoryContext8 Instance = new();
+    private MemoryContext8() { }
 
     public override IEnumerable<ushort> GetKeyItemParams() => (KeyItemMemoryArgsGen8.Values).SelectMany(z => z).Distinct();
 
@@ -17,7 +19,7 @@ public sealed partial class MemoryContext8 : MemoryContext
     public override bool CanUseItemGeneric(int item) => true; // todo
 
     public override bool IsUsedKeyItemUnspecific(int item) => false;
-    public override bool IsUsedKeyItemSpecific(int item, int species) => KeyItemMemoryArgsGen8.TryGetValue(species, out var value) && value.Contains((ushort)item);
+    public override bool IsUsedKeyItemSpecific(int item, ushort species) => KeyItemMemoryArgsGen8.TryGetValue(species, out var value) && value.Contains((ushort)item);
     public override bool CanHoldItem(int item) => Legal.HeldItems_SWSH.Contains((ushort)item);
 
     public override bool CanObtainMemoryOT(GameVersion pkmVersion, byte memory) => pkmVersion switch
@@ -33,7 +35,8 @@ public sealed partial class MemoryContext8 : MemoryContext
 
     public override bool IsInvalidGeneralLocationMemoryValue(byte memory, ushort variable, IEncounterTemplate enc, PKM pk)
     {
-        if (!Memories.MemoryGeneral.Contains(memory))
+        var type = Memories.GetMemoryArgType(memory, 8);
+        if (type is not MemoryArgType.GeneralLocation)
             return false;
 
         if (memory is 1 or 2 or 3) // Encounter only
@@ -51,7 +54,7 @@ public sealed partial class MemoryContext8 : MemoryContext
         };
     }
 
-    private static bool CanObtainMemorySWSH(int memory) => memory <= MAX_MEMORY_ID_SWSH && !Memory_NotSWSH.Contains(memory);
+    private static bool CanObtainMemorySWSH(byte memory) => memory <= MAX_MEMORY_ID_SWSH && !Memory_NotSWSH.Contains(memory);
 
     public override bool CanWinLotoID(int item) => LotoPrizeSWSH.Contains((ushort)item);
 
@@ -146,7 +149,7 @@ public sealed partial class MemoryContext8 : MemoryContext
     {
         if (memory >= MemoryFeelings.Length)
             return false;
-        if (feeling <= 0)
+        if (feeling == 0)
             return false; // Different from Gen6; this +1 is to match them treating 0 as empty
         return (MemoryFeelings[memory] & (1 << --feeling)) != 0;
     }

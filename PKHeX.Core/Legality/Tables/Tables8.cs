@@ -168,7 +168,7 @@ public static partial class Legal
 
     internal static readonly ushort[] HeldItems_SWSH = ArrayUtil.ConcatAll(Pouch_Items_SWSH, Pouch_Berries_SWSH, Pouch_Medicine_SWSH, Pouch_TR_SWSH, Pouch_Treasure_SWSH, Pouch_Ingredients_SWSH);
 
-    internal static readonly HashSet<int> GalarOriginForms = new()
+    internal static readonly HashSet<ushort> GalarOriginForms = new()
     {
         (int)Species.Meowth,
         (int)Species.Ponyta,
@@ -185,23 +185,13 @@ public static partial class Legal
         (int)Species.Stunfisk,
     };
 
-    internal static readonly HashSet<int> GalarVariantFormEvolutions = new()
+    internal static readonly HashSet<ushort> GalarVariantFormEvolutions = new()
     {
         (int)Species.MrMime,
         (int)Species.Weezing,
     };
 
-    internal static readonly IReadOnlyDictionary<int, int> GalarForm0Evolutions = new Dictionary<int, int>
-    {
-        {(int)Species.Perrserker, 2},
-        {(int)Species.Obstagoon, 1},
-        {(int)Species.MrRime, 1},
-        {(int)Species.Sirfetchd, 2},
-        {(int)Species.Runerigus, 1},
-        {(int)Species.Cursola, 1},
-    };
-
-    internal static readonly HashSet<int> ValidMet_SWSH = new()
+    internal static readonly HashSet<ushort> ValidMet_SWSH = new()
     {
         006, 008,
         012, 014, 016, 018,
@@ -240,7 +230,7 @@ public static partial class Legal
     public static bool IsDynamaxCrystal(ushort item) => item is >= DMAX_START and <= DMAX_END;
     public static bool IsDynamaxCrystalAvailable(ushort item) => item is >= DMAX_START and <= DMAX_LEGAL_END;
 
-    internal static readonly bool[] ReleasedHeldItems_8 = GetPermitList(MaxItemID_8, HeldItems_SWSH, new ushort[]
+    internal static readonly bool[] ReleasedHeldItems_8 = GetPermitList(MaxItemID_8, HeldItems_SWSH, stackalloc ushort[]
     {
         298, // Flame Plate
         299, // Splash Plate

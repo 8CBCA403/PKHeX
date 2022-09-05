@@ -19,7 +19,7 @@ public sealed class LearnGroup2 : ILearnGroup
 
     public bool HasVisited(PKM pk, EvolutionHistory history) => history.HasVisitedGen2;
 
-    public bool Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc,
+    public bool Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc,
         MoveSourceType types = MoveSourceType.All, LearnOption option = LearnOption.Current)
     {
         if (enc.Generation == Generation && types.HasFlagFast(MoveSourceType.Encounter))
@@ -35,17 +35,17 @@ public sealed class LearnGroup2 : ILearnGroup
         return MoveResult.AllParsed(result);
     }
 
-    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<int> current, IEncounterTemplate enc)
+    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, IEncounterTemplate enc)
     {
-        Span<int> moves = stackalloc int[4];
-        if (enc is IMoveset { Moves: int[] { Length: not 0 } x })
+        Span<ushort> moves = stackalloc ushort[4];
+        if (enc is IMoveset { Moves: { HasMoves: true } x })
             x.CopyTo(moves);
         else
             GetEncounterMoves(enc, moves);
         LearnVerifierHistory.MarkInitialMoves(result, current, moves);
     }
 
-    private static void GetEncounterMoves(IEncounterTemplate enc, Span<int> moves)
+    private static void GetEncounterMoves(IEncounterTemplate enc, Span<ushort> moves)
     {
         if (enc.Version is GameVersion.C or GameVersion.GSC)
             LearnSource2C.GetEncounterMoves(enc, moves);
@@ -53,16 +53,16 @@ public sealed class LearnGroup2 : ILearnGroup
             LearnSource2GS.GetEncounterMoves(enc, moves);
     }
 
-    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<int> current, EncounterEgg egg)
+    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, EncounterEgg egg)
     {
-        ReadOnlySpan<int> eggMoves, levelMoves;
+        ReadOnlySpan<ushort> eggMoves, levelMoves;
         if (egg.Version is GameVersion.C)
         {
             var inst = LearnSource2C.Instance;
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
         else
         {
@@ -70,7 +70,7 @@ public sealed class LearnGroup2 : ILearnGroup
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
 
         for (var i = result.Length - 1; i >= 0; i--)
@@ -85,7 +85,7 @@ public sealed class LearnGroup2 : ILearnGroup
         }
     }
 
-    private static void Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage, LearnOption option = LearnOption.Current, MoveSourceType types = MoveSourceType.All)
+    private static void Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage, LearnOption option = LearnOption.Current, MoveSourceType types = MoveSourceType.All)
     {
         var gs = LearnSource2GS.Instance;
         if (!gs.TryGetPersonal(evo.Species, evo.Form, out var gp))
@@ -168,14 +168,16 @@ public sealed class LearnGroup2 : ILearnGroup
 
     private static void FlagEncounterMoves(IEncounterTemplate enc, Span<bool> result)
     {
-        if (enc is IMoveset { Moves: int[] { Length: not 0 } x })
+        if (enc is IMoveset { Moves: { HasMoves: true } x })
         {
-            foreach (var move in x)
-                result[move] = true;
+            result[x.Move4] = true;
+            result[x.Move3] = true;
+            result[x.Move2] = true;
+            result[x.Move1] = true;
         }
         else
         {
-            Span<int> moves = stackalloc int[4];
+            Span<ushort> moves = stackalloc ushort[4];
             GetEncounterMoves(enc, moves);
             foreach (var move in moves)
                 result[move] = true;

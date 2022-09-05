@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Forms;
 using PKHeX.Core;
@@ -27,14 +26,14 @@ public partial class KChart : Form
         abilities = strings.abilitylist;
 
         DGV.Rows.Clear();
-        for (int s = 1; s <= pt.MaxSpeciesID; s++)
+        for (ushort s = 1; s <= pt.MaxSpeciesID; s++)
         {
             var fc = pt[s, 0].FormCount;
             var formNames = fc <= 1
                 ? Array.Empty<string>()
                 : FormConverter.GetFormList(s, strings.Types, strings.forms, Main.GenderSymbols, SAV.Context);
 
-            for (int f = 0; f < fc; f++)
+            for (byte f = 0; f < fc; f++)
             {
                 var name = f == 0 ? species[s] : $"{species[s]}-{(f < formNames.Length ? formNames[f] : f.ToString())}";
                 PopEntry(s, f, name);
@@ -46,7 +45,7 @@ public partial class KChart : Form
         DGV.Sort(DGV.Columns[0], ListSortDirection.Ascending);
     }
 
-    private void PopEntry(int species, int form, string name)
+    private void PopEntry(ushort species, byte form, string name)
     {
         var p = SAV.Personal.GetFormEntry(species, form);
         if (p.HP == 0)
@@ -79,27 +78,21 @@ public partial class KChart : Form
         cells[c++].Value = p.SPD.ToString("000");
         cells[c].Style.BackColor = ColorUtil.ColorBaseStat(p.SPE);
         cells[c++].Value = p.SPE.ToString("000");
-        var abils = p.Abilities;
-        cells[c++].Value = GetAbility(abils, 0);
-        cells[c++].Value = GetAbility(abils, 1);
-        cells[c].Value = GetAbility(abils, 2);
+        var abils = p.AbilityCount;
+        cells[c++].Value = abilities[abils > 0 ? p.GetAbilityAtIndex(0) : 0];
+        cells[c++].Value = abilities[abils > 1 ? p.GetAbilityAtIndex(1) : 0];
+        cells[c].Value   = abilities[abils > 2 ? p.GetAbilityAtIndex(2) : 0];
 
         row.Height = SpriteUtil.Spriter.Height + 1;
         DGV.Rows.Add(row);
     }
 
-    private string GetAbility(IReadOnlyList<int> abilityIDs, int index)
-    {
-        if ((uint)index >= abilityIDs.Count)
-            return abilities[0];
-        return abilities[abilityIDs[index]];
-    }
-
-    private static bool GetIsNative(IPersonalInfo personalInfo, int s) => personalInfo switch
+    private static bool GetIsNative(IPersonalInfo personalInfo, ushort s) => personalInfo switch
     {
         PersonalInfo7 => s > 721 || Legal.PastGenAlolanNatives.Contains(s),
         PersonalInfo8SWSH ss => ss.IsInDex,
         PersonalInfo8BDSP bs => bs.IsInDex,
+        PersonalInfo8LA bs => bs.IsPresentInGame,
         _ => true,
     };
 }

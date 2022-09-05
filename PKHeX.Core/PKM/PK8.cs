@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using static System.Buffers.Binary.BinaryPrimitives;
 
@@ -100,8 +100,8 @@ public sealed class PK8 : G8PKM
     }
 
     // Maximums
-    public override int MaxMoveID => Legal.MaxMoveID_8;
-    public override int MaxSpeciesID => Legal.MaxSpeciesID_8;
+    public override ushort MaxMoveID => Legal.MaxMoveID_8;
+    public override ushort MaxSpeciesID => Legal.MaxSpeciesID_8;
     public override int MaxAbilityID => Legal.MaxAbilityID_8;
     public override int MaxItemID => Legal.MaxItemID_8;
     public override int MaxBallID => Legal.MaxBallID_8;
@@ -149,12 +149,13 @@ public sealed class PK8 : G8PKM
 
         var index = table.GetFormIndex(Species, Form);
         var learn = learnsets[index];
-        Span<int> moves = stackalloc int[4];
+        Span<ushort> moves = stackalloc ushort[4];
         learn.SetEncounterMoves(CurrentLevel, moves);
         SetMoves(moves);
         this.SetMaximumPPCurrent(moves);
     }
 
+    public bool IsSideTransfer => Met_Location is Locations.HOME_SHSP or Locations.HOME_SWBD or Locations.HOME_SWLA;
     public override bool BDSP => Met_Location is Locations.HOME_SWBD or Locations.HOME_SHSP;
     public override bool LA => Met_Location is Locations.HOME_SWLA;
     public override bool HasOriginalMetLocation => base.HasOriginalMetLocation && !(BDSP || LA);

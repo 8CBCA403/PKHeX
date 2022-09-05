@@ -47,7 +47,7 @@ public sealed class FilteredGameDataSource
             SAV7b => source.SpeciesDataSource // LGPE: Kanto 151, Meltan/Melmetal
                 .Where(s => s.Value is <= (int)Core.Species.Mew or (int)Core.Species.Meltan or (int)Core.Species.Melmetal),
             SAV8LA => source.SpeciesDataSource
-                .Where(s => PersonalTable.LA.IsSpeciesInGame(s.Value)),
+                .Where(s => PersonalTable.LA.IsSpeciesInGame((ushort)s.Value)),
             _ => source.SpeciesDataSource.Where(s => s.Value <= sav.MaxSpeciesID),
         };
     }
@@ -60,7 +60,7 @@ public sealed class FilteredGameDataSource
         var legal = source.LegalMoveDataSource;
         return sav switch
         {
-            SAV7b => legal.Where(s => Legal.AllowedMovesGG.Contains((short) s.Value)), // LGPE: Not all moves are available
+            SAV7b => legal.Where(s => Legal.IsAllowedMoveGG((ushort)s.Value)), // LGPE: Not all moves are available
             _ => legal.Where(m => m.Value <= sav.MaxMoveID),
         };
     }
@@ -80,21 +80,18 @@ public sealed class FilteredGameDataSource
 
     public IReadOnlyList<ComboItem> GetAbilityList(PKM pk)
     {
-        var abilities = pk.PersonalInfo.Abilities;
-        int format = pk.Format;
-        return GetAbilityList(abilities, format);
+        return GetAbilityList(pk.PersonalInfo, pk.Format);
     }
 
-    public IReadOnlyList<ComboItem> GetAbilityList(IReadOnlyList<int> abilities, int format)
+    public IReadOnlyList<ComboItem> GetAbilityList(IPersonalAbility pi, int format)
     {
-        var count = format == 3 && (abilities[1] == 0 || abilities[1] == abilities[0]) ? 1 : abilities.Count;
-        var list = new ComboItem[count];
+        var list = new ComboItem[pi.AbilityCount];
 
         var alist = Source.Strings.Ability;
         var suffix = AbilityIndexSuffixes;
         for (int i = 0; i < list.Length; i++)
         {
-            var ability = abilities[i];
+            var ability = pi.GetAbilityAtIndex(i);
             list[i] = new ComboItem(alist[ability] + suffix[i], ability);
         }
 

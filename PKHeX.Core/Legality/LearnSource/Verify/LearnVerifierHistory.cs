@@ -4,7 +4,7 @@ namespace PKHeX.Core;
 
 internal static class LearnVerifierHistory
 {
-    public static void Verify(Span<MoveResult> result, ReadOnlySpan<int> current, IEncounterTemplate enc, PKM pk, EvolutionHistory history)
+    public static void Verify(Span<MoveResult> result, ReadOnlySpan<ushort> current, IEncounterTemplate enc, PKM pk, EvolutionHistory history)
     {
         if (enc.Species is (int)Species.Smeargle)
         {
@@ -22,7 +22,7 @@ internal static class LearnVerifierHistory
         MarkAndIterate(result, current, enc, pk, history, game, MoveSourceType.All, LearnOption.Current);
     }
 
-    public static void MarkAndIterate(Span<MoveResult> result, ReadOnlySpan<int> current, IEncounterTemplate enc, PKM pk, EvolutionHistory history, ILearnGroup game,
+    public static void MarkAndIterate(Span<MoveResult> result, ReadOnlySpan<ushort> current, IEncounterTemplate enc, PKM pk, EvolutionHistory history, ILearnGroup game,
         MoveSourceType types = MoveSourceType.All, LearnOption option = LearnOption.Current)
     {
         if (!pk.IsOriginalMovesetDeleted() && types.HasFlagFast(MoveSourceType.Encounter))
@@ -47,15 +47,21 @@ internal static class LearnVerifierHistory
         }
     }
 
-    private static void MarkSpecialMoves(Span<MoveResult> result, ReadOnlySpan<int> current, IEncounterTemplate enc, PKM pk)
+    private static void MarkSpecialMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, IEncounterTemplate enc, PKM pk)
     {
-        if (enc is IMoveset { Moves: int[] {Length: not 0} moves})
+        if (enc is IMoveset { Moves: { HasMoves: true } moves })
+        {
             MarkInitialMoves(result, current, moves);
+        }
         else if (enc is EncounterSlot8GO g)
-            MarkInitialMoves(result, current, g.GetInitialMoves(pk.Met_Level));
+        {
+            Span<ushort> initial = stackalloc ushort[4];
+            g.GetInitialMoves(pk.Met_Level, initial);
+            MarkInitialMoves(result, current, initial);
+        }
     }
 
-    private static bool Iterate(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc, ILearnGroup game, MoveSourceType types, LearnOption option)
+    private static bool Iterate(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc, ILearnGroup game, MoveSourceType types, LearnOption option)
     {
         while (true)
         {
@@ -71,7 +77,23 @@ internal static class LearnVerifierHistory
         }
     }
 
-    public static void MarkInitialMoves(Span<MoveResult> result, ReadOnlySpan<int> current, ReadOnlySpan<int> moves)
+    public static void MarkInitialMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, Moveset moves)
+    {
+        // If the initial move is present in the current moves, mark that current move index as an initial move.
+        if (moves.Move1 == 0) return;
+        var index = current.IndexOf(moves.Move1); if (index != -1) result[index] = MoveResult.Initial;
+
+        if (moves.Move2 == 0) return;
+        index = current.IndexOf(moves.Move2); if (index != -1) result[index] = MoveResult.Initial;
+
+        if (moves.Move3 == 0) return;
+        index = current.IndexOf(moves.Move3); if (index != -1) result[index] = MoveResult.Initial;
+
+        if (moves.Move4 == 0) return;
+        index = current.IndexOf(moves.Move4); if (index != -1) result[index] = MoveResult.Initial;
+    }
+
+    public static void MarkInitialMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, ReadOnlySpan<ushort> moves)
     {
         // If the initial move is present in the current moves, mark that current move index as an initial move.
         foreach (var move in moves)
@@ -84,7 +106,7 @@ internal static class LearnVerifierHistory
         }
     }
 
-    private static void MarkEmptySlots(Span<MoveResult> result, ReadOnlySpan<int> current)
+    private static void MarkEmptySlots(Span<MoveResult> result, ReadOnlySpan<ushort> current)
     {
         // Iterate from last move, marking empty slots, until we hit a non-zero move ID.
         for (int i = current.Length - 1; i >= 0; i--)
@@ -96,21 +118,21 @@ internal static class LearnVerifierHistory
         }
     }
 
-    private static void VerifySmeargle(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk)
+    private static void VerifySmeargle(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk)
     {
         for (int i = current.Length - 1; i >= 0; i--)
         {
             var move = current[i];
             if (move == 0)
                 result[i] = MoveResult.Empty;
-            else if (Legal.IsValidSketch(move, pk.Format))
+            else if (MoveInfo.IsValidSketch(move, pk.Context))
                 result[i] = MoveResult.Sketch;
             else
                 result[i] = MoveResult.Unobtainable();
         }
     }
 
-    private static void MarkRelearnMoves(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk)
+    private static void MarkRelearnMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk)
     {
         // Check if any of the current moves can be relearned.
         for (int i = 0; i < current.Length; i++)

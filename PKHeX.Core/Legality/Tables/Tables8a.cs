@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace PKHeX.Core;
 
@@ -68,33 +67,6 @@ public static partial class Legal
         1795, 1796, 1797, 1798, 1799, 1800, 1801, 1802, 1803, 1804,
         1805, 1806, 1807,
         1828,
-    };
-
-    internal static readonly HashSet<int> HisuiOriginForms = new()
-    {
-        (int)Species.Sneasel,
-        (int)Species.Growlithe,
-        (int)Species.Arcanine,
-        (int)Species.Voltorb,
-        (int)Species.Electrode,
-        (int)Species.Qwilfish,
-        (int)Species.Sliggoo,
-        (int)Species.Goodra,
-    };
-
-    internal static readonly IReadOnlyDictionary<int, int> HisuiForm0Evolutions = new Dictionary<int, int>
-    {
-        {(int)Species.Sneasler, 1},
-    };
-
-    internal static readonly HashSet<int> HisuiVariantFormEvolutions = new()
-    {
-        (int)Species.Decidueye,
-        (int)Species.Typhlosion,
-        (int)Species.Samurott,
-        (int)Species.Lilligant,
-        (int)Species.Braviary,
-        (int)Species.Avalugg,
     };
 
     #region Moves

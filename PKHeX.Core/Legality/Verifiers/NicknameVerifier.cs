@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using static PKHeX.Core.LegalityCheckStrings;
 using static PKHeX.Core.LanguageID;
 
@@ -92,9 +91,11 @@ public sealed class NicknameVerifier : Verifier
             {
                 // Gen3 gifts transferred to Generation 4 from another language can set the nickname flag.
                 var evos = data.Info.EvoChainsAllGens.Gen3;
-                bool matchAny = evos.Any(evo => !SpeciesName.IsNicknamedAnyLanguage(evo.Species, nickname, 3));
-                if (matchAny)
-                    return;
+                foreach (var evo in evos)
+                {
+                    if (!SpeciesName.IsNicknamedAnyLanguage(evo.Species, nickname, 3))
+                        return;
+                }
             }
 
             if (pk.IsNicknamed)
@@ -158,7 +159,7 @@ public sealed class NicknameVerifier : Verifier
             }
             for (int i = 0; i < SpeciesName.SpeciesDict.Count; i++)
             {
-                if (!SpeciesName.SpeciesDict[i].TryGetValue(nickname, out int species))
+                if (!SpeciesName.SpeciesDict[i].TryGetValue(nickname, out var species))
                     continue;
                 var msg = species == pk.Species && i != pk.Language ? LNickMatchNoOthersFail : LNickMatchLanguageFlag;
                 data.AddLine(Get(msg, ParseSettings.NicknamedAnotherSpecies));
@@ -215,7 +216,7 @@ public sealed class NicknameVerifier : Verifier
 
     private static bool IsNicknameValid(PKM pk, IEncounterTemplate enc, string nickname)
     {
-        int species = pk.Species;
+        ushort species = pk.Species;
         int format = pk.Format;
         int language = pk.Language;
         if (SpeciesName.GetSpeciesNameGeneration(species, language, format) == nickname)

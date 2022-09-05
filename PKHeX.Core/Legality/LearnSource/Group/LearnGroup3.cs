@@ -13,7 +13,7 @@ public sealed class LearnGroup3 : ILearnGroup
     public ILearnGroup? GetPrevious(PKM pk, EvolutionHistory history, IEncounterTemplate enc, LearnOption option) => null; // Gen3 is the end of the line!
     public bool HasVisited(PKM pk, EvolutionHistory history) => history.HasVisitedGen3;
 
-    public bool Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc,
+    public bool Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc,
         MoveSourceType types = MoveSourceType.All, LearnOption option = LearnOption.Current)
     {
         var evos = history.Gen3;
@@ -29,7 +29,7 @@ public sealed class LearnGroup3 : ILearnGroup
         return MoveResult.AllParsed(result);
     }
 
-    private static void CheckNincadaMoves(Span<MoveResult> result, ReadOnlySpan<int> current, EvoCriteria nincada)
+    private static void CheckNincadaMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, EvoCriteria nincada)
     {
         if (MoveResult.AllParsed(result))
             return;
@@ -58,22 +58,22 @@ public sealed class LearnGroup3 : ILearnGroup
             if (level == -1 || !nincada.InsideLevelRange(level))
                 continue;
 
-            var info = new MoveLearnInfo(LearnMethod.ShedinjaEvo, LearnEnvironment.Pt, (byte)level);
+            var info = new MoveLearnInfo(LearnMethod.ShedinjaEvo, LearnEnvironment.E, (byte)level);
             result[i] = new MoveResult(info, 0, Generation);
             break; // Can only have one Ninjask move.
         }
     }
 
-    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<int> current, EncounterEgg egg)
+    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, EncounterEgg egg)
     {
-        ReadOnlySpan<int> eggMoves, levelMoves;
+        ReadOnlySpan<ushort> eggMoves, levelMoves;
         if (egg.Version is GameVersion.E)
         {
             var inst = LearnSource3E.Instance;
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
         else if (egg.Version is GameVersion.FR)
         {
@@ -81,7 +81,7 @@ public sealed class LearnGroup3 : ILearnGroup
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
         else if (egg.Version is GameVersion.LG)
         {
@@ -89,7 +89,7 @@ public sealed class LearnGroup3 : ILearnGroup
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
         else
         {
@@ -97,7 +97,7 @@ public sealed class LearnGroup3 : ILearnGroup
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
 
         for (var i = result.Length - 1; i >= 0; i--)
@@ -114,7 +114,7 @@ public sealed class LearnGroup3 : ILearnGroup
         }
     }
 
-    private static void Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types)
+    private static void Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types)
     {
         var rs = LearnSource3RS.Instance;
         var species = evo.Species;
@@ -168,7 +168,7 @@ public sealed class LearnGroup3 : ILearnGroup
         foreach (var evo in evos)
             GetAllMoves(result, pk, evo, types);
 
-        if (enc.Species is (int)Species.Nincada && evos.Length == 2 && evos[0].Species == (int)Species.Shedinja)
+        if (evos.Length == 2 && evos[0].Species == (int)Species.Shedinja)
         {
             var shedinja = LearnSource3E.Instance;
             var moves = shedinja.GetLearnset((int)Species.Ninjask, 0);
@@ -192,10 +192,12 @@ public sealed class LearnGroup3 : ILearnGroup
 
     private static void FlagEncounterMoves(IEncounterTemplate enc, Span<bool> result)
     {
-        if (enc is IMoveset { Moves: int[] { Length: not 0 } x })
+        if (enc is IMoveset { Moves: { HasMoves: true } x })
         {
-            foreach (var move in x)
-                result[move] = true;
+            result[x.Move4] = true;
+            result[x.Move3] = true;
+            result[x.Move2] = true;
+            result[x.Move1] = true;
         }
     }
 }

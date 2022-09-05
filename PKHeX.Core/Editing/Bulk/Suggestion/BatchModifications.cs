@@ -22,7 +22,7 @@ internal static class BatchModifications
             }
             else if (!IsNone(propValue))
             {
-                Span<int> moves = stackalloc int[4];
+                Span<ushort> moves = stackalloc ushort[4];
                 pk.GetMoves(moves);
                 t.SetRecordFlags(moves); // whatever fit the current moves
             }
@@ -54,11 +54,10 @@ internal static class BatchModifications
 
     public static ModifyResult SetSuggestedRibbons(BatchInfo info, string value)
     {
-        var pk = info.Entity;
         if (IsNone(value))
-            RibbonApplicator.RemoveAllValidRibbons(pk);
+            RibbonApplicator.RemoveAllValidRibbons(info.Legality);
         else // All
-            RibbonApplicator.SetAllValidRibbons(pk);
+            RibbonApplicator.SetAllValidRibbons(info.Legality);
         return ModifyResult.Modified;
     }
 
@@ -91,7 +90,7 @@ internal static class BatchModifications
     /// </summary>
     /// <param name="pk">Pokémon to modify.</param>
     /// <param name="moves">Moves to apply.</param>
-    public static ModifyResult SetMoves(PKM pk, ReadOnlySpan<int> moves)
+    public static ModifyResult SetMoves(PKM pk, ReadOnlySpan<ushort> moves)
     {
         pk.SetMoves(moves);
         pk.HealPP();

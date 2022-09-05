@@ -1,21 +1,36 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using static PKHeX.Core.EncounterServerDateCheck;
 
 namespace PKHeX.Core;
 
+/// <summary>
+/// Provides indication that the encounter may or may not have a specific date range to consider.
+/// </summary>
 public interface IEncounterServerDate
 {
+    /// <summary>
+    /// If true, the date range it may be acquired at is restricted to a specific date range.
+    /// </summary>
     bool IsDateRestricted { get; }
 }
 
+/// <summary>
+/// Enumeration indicating if a date range check is satisfied.
+/// </summary>
 public enum EncounterServerDateCheck
 {
+    /// <summary> No need to consider date range. </summary>
     None,
+    /// <summary> Date does fall within the range it was available. </summary>
     Valid,
+    /// <summary> Date does NOT fall within the range it was available. </summary>
     Invalid,
 }
 
+/// <summary>
+/// Logic to check if a date obtained is within the date of availability.
+/// </summary>
 public static class EncounterServerDate
 {
     private static bool IsValidDate(DateTime obtained, DateTime start) => obtained >= start && obtained <= DateTime.UtcNow;
@@ -77,6 +92,7 @@ public static class EncounterServerDate
         {0801, (new(2022, 02, 25), new(2022, 06, 01))}, // Teresa Roca Hisuian Growlithe
         {1201, (new(2022, 05, 31), new(2022, 08, 01))}, // 전이마을 Regigigas
         {1202, (new(2022, 05, 31), new(2022, 08, 01))}, // 빛나's Piplup
+        {1203, (new(2022, 08, 18), new(2022, 10, 31))}, // Arceus Chronicles Hisuian Growlithe
 
         {9018, (new(2022, 05, 18), Never)}, // Hidden Ability Rowlet
         {9019, (new(2022, 05, 18), Never)}, // Hidden Ability Cyndaquil

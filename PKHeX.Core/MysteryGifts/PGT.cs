@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core;
@@ -65,9 +63,10 @@ public sealed class PGT : DataMysteryGift, IRibbonSetEvent3, IRibbonSetEvent4
         set
         {
             _pk = value;
-            var data = Array.FindIndex(value.Data, z => z != 0) == -1 // all zero
-                ? value.Data
-                : PokeCrypto.EncryptArray45(value.Data);
+            var data = value.Data;
+            bool zero = Array.TrueForAll(data, static z => z == 0); // all zero
+            if (!zero)
+                data = PokeCrypto.EncryptArray45(data);
             data.CopyTo(Data, 8);
         }
     }
@@ -111,12 +110,12 @@ public sealed class PGT : DataMysteryGift, IRibbonSetEvent3, IRibbonSetEvent4
     public override bool IsItem { get => PGTGiftType == GiftType.Item; set { if (value) PGTGiftType = GiftType.Item; } }
     public override bool IsEntity { get => PGTGiftType is GiftType.Pokémon or GiftType.PokémonEgg or GiftType.ManaphyEgg; set { } }
 
-    public override int Species { get => IsManaphyEgg ? 490 : PK.Species; set => PK.Species = value; }
-    public override IReadOnlyList<int> Moves { get => PK.Moves; set => PK.SetMoves(value.ToArray()); }
+    public override ushort Species { get => IsManaphyEgg ? (ushort)490 : PK.Species; set => PK.Species = value; }
+    public override Moveset Moves { get => new(PK.Move1, PK.Move2, PK.Move3, PK.Move4); set => PK.SetMoves(value); }
     public override int HeldItem { get => PK.HeldItem; set => PK.HeldItem = value; }
     public override bool IsShiny => PK.IsShiny;
     public override int Gender { get => PK.Gender; set => PK.Gender = value; }
-    public override int Form { get => PK.Form; set => PK.Form = value; }
+    public override byte Form { get => PK.Form; set => PK.Form = value; }
     public override int TID { get => (ushort)PK.TID; set => PK.TID = value; }
     public override int SID { get => (ushort)PK.SID; set => PK.SID = value; }
     public override string OT_Name { get => PK.OT_Name; set => PK.OT_Name = value; }
@@ -209,8 +208,8 @@ public sealed class PGT : DataMysteryGift, IRibbonSetEvent3, IRibbonSetEvent4
         // Generate IVs
         if ((pk4.IV32 & 0x3FFF_FFFFu) == 0) // Ignore Nickname/Egg flag bits
         {
-            uint iv1 = ((seed = RNG.LCRNG.Next(seed)) >> 16) & 0x7FFF;
-            uint iv2 = ((RNG.LCRNG.Next(seed)) >> 16) & 0x7FFF;
+            uint iv1 = ((seed = LCRNG.Next(seed)) >> 16) & 0x7FFF;
+            uint iv2 = ((LCRNG.Next(seed)) >> 16) & 0x7FFF;
             pk4.IV32 |= iv1 | (iv2 << 15);
         }
     }
@@ -253,14 +252,14 @@ public sealed class PGT : DataMysteryGift, IRibbonSetEvent3, IRibbonSetEvent4
     {
         do
         {
-            uint pid1 = (seed = RNG.LCRNG.Next(seed)) >> 16; // low
-            uint pid2 = (seed = RNG.LCRNG.Next(seed)) & 0xFFFF0000; // hi
+            uint pid1 = (seed = LCRNG.Next(seed)) >> 16; // low
+            uint pid2 = (seed = LCRNG.Next(seed)) & 0xFFFF0000; // hi
             pk4.PID = pid2 | pid1;
             // sanity check gender for non-genderless PID cases
         } while (!pk4.IsGenderValid());
 
         while (pk4.IsShiny) // Call the ARNG to change the PID
-            pk4.PID = RNG.ARNG.Next(pk4.PID);
+            pk4.PID = ARNG.Next(pk4.PID);
         return seed;
     }
 

@@ -13,7 +13,7 @@ public sealed class LearnGroup6 : ILearnGroup
     public ILearnGroup? GetPrevious(PKM pk, EvolutionHistory history, IEncounterTemplate enc, LearnOption option) => enc.Generation is Generation ? null : LearnGroup5.Instance;
     public bool HasVisited(PKM pk, EvolutionHistory history) => history.HasVisitedGen6;
 
-    public bool Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc,
+    public bool Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvolutionHistory history, IEncounterTemplate enc,
         MoveSourceType types = MoveSourceType.All, LearnOption option = LearnOption.Current)
     {
         var mode = GetCheckMode(enc, pk);
@@ -27,16 +27,16 @@ public sealed class LearnGroup6 : ILearnGroup
         return MoveResult.AllParsed(result);
     }
 
-    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<int> current, EncounterEgg egg)
+    private static void CheckEncounterMoves(Span<MoveResult> result, ReadOnlySpan<ushort> current, EncounterEgg egg)
     {
-        ReadOnlySpan<int> eggMoves, levelMoves;
+        ReadOnlySpan<ushort> eggMoves, levelMoves;
         if (egg.Version > GameVersion.Y) // OR/AS
         {
             var inst = LearnSource6AO.Instance;
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
         else
         {
@@ -44,7 +44,7 @@ public sealed class LearnGroup6 : ILearnGroup
             eggMoves = inst.GetEggMoves(egg.Species, egg.Form);
             levelMoves = egg.CanInheritMoves
                 ? inst.GetLearnset(egg.Species, egg.Form).Moves
-                : ReadOnlySpan<int>.Empty;
+                : ReadOnlySpan<ushort>.Empty;
         }
 
         for (var i = result.Length - 1; i >= 0; i--)
@@ -61,7 +61,7 @@ public sealed class LearnGroup6 : ILearnGroup
         }
     }
 
-    private static void Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types, LearnOption option, CheckMode mode)
+    private static void Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types, LearnOption option, CheckMode mode)
     {
         if (!FormChangeUtil.ShouldIterateForms(evo.Species, evo.Form, Generation, option))
         {
@@ -96,7 +96,7 @@ public sealed class LearnGroup6 : ILearnGroup
         AO,
     }
 
-    private static void CheckInternal(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types, LearnOption option, CheckMode mode)
+    private static void CheckInternal(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types, LearnOption option, CheckMode mode)
     {
         if (mode == CheckMode.Both)
             CheckBoth(result, current, pk, evo, stage, types, option);
@@ -106,7 +106,7 @@ public sealed class LearnGroup6 : ILearnGroup
             CheckSingle(result, current, pk, evo, stage, LearnSource6XY.Instance, types, option);
     }
 
-    private static void CheckBoth(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types, LearnOption option)
+    private static void CheckBoth(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage, MoveSourceType types, LearnOption option)
     {
         var ao = LearnSource6AO.Instance;
         var species = evo.Species;
@@ -127,13 +127,13 @@ public sealed class LearnGroup6 : ILearnGroup
                 result[i] = new(chk, (byte)stage, Generation);
                 continue;
             }
-            xy.GetCanLearn(pk, ao_pi, evo, move, types & MoveSourceType.LevelUp, option);
+            chk = xy.GetCanLearn(pk, ao_pi, evo, move, types & MoveSourceType.LevelUp, option);
             if (chk != default)
                 result[i] = new(chk, (byte)stage, Generation);
         }
     }
 
-    private static void CheckSingle<T>(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage, T game, MoveSourceType types, LearnOption option) where T : ILearnSource
+    private static void CheckSingle<T>(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage, T game, MoveSourceType types, LearnOption option) where T : ILearnSource
     {
         var species = evo.Species;
         if (!game.TryGetPersonal(species, evo.Form, out var pi))
@@ -202,15 +202,19 @@ public sealed class LearnGroup6 : ILearnGroup
 
     private static void FlagEncounterMoves(IEncounterTemplate enc, Span<bool> result)
     {
-        if (enc is IMoveset { Moves: int[] { Length: not 0 } x })
+        if (enc is IMoveset { Moves: { Move1: not 0 } x })
         {
-            foreach (var move in x)
-                result[move] = true;
+            result[x.Move4] = true;
+            result[x.Move3] = true;
+            result[x.Move2] = true;
+            result[x.Move1] = true;
         }
-        if (enc is IRelearn { Relearn: int[] { Length: not 0 } r })
+        if (enc is IRelearn { Relearn: {Move1: not 0} r})
         {
-            foreach (var move in r)
-                result[move] = true;
+            result[r.Move4] = true;
+            result[r.Move3] = true;
+            result[r.Move2] = true;
+            result[r.Move1] = true;
         }
     }
 }

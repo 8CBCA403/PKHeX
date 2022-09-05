@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace PKHeX.Core;
 
@@ -11,8 +10,8 @@ namespace PKHeX.Core;
 /// </remarks>
 public abstract record EncounterStatic(GameVersion Version) : IEncounterable, IMoveset, IEncounterMatch
 {
-    public int Species { get; init; }
-    public int Form { get; init; }
+    public ushort Species { get; init; }
+    public byte Form { get; init; }
     public virtual byte Level { get; init; }
     public virtual byte LevelMin => Level;
     public virtual byte LevelMax => Level;
@@ -37,8 +36,8 @@ public abstract record EncounterStatic(GameVersion Version) : IEncounterable, IM
 
     public Ball FixedBall => Gift ? (Ball)Ball : Core.Ball.None;
 
-    public IReadOnlyList<int> Moves { get; init; } = Array.Empty<int>();
-    public IReadOnlyList<int> IVs { get; init; } = Array.Empty<int>();
+    public Moveset Moves { get; init; }
+    public IndividualValueSet IVs { get; init; }
 
     public virtual bool EggEncounter => EggLocation != 0;
 
@@ -159,15 +158,24 @@ public abstract record EncounterStatic(GameVersion Version) : IEncounterable, IM
 
     protected virtual void SetEncounterMoves(PKM pk, GameVersion version, int level)
     {
-        var moves = Moves.Count > 0 ? (int[])Moves : MoveLevelUp.GetEncounterMoves(pk, level, version);
-        pk.SetMoves(moves);
-        pk.SetMaximumPPCurrent(moves);
+        if (Moves.HasMoves)
+        {
+            pk.SetMoves(Moves);
+            pk.SetMaximumPPCurrent(Moves);
+        }
+        else
+        {
+            Span<ushort> moves = stackalloc ushort[4];
+            MoveLevelUp.GetEncounterMoves(moves, pk, level, version);
+            pk.SetMoves(moves);
+            pk.SetMaximumPPCurrent(moves);
+        }
     }
 
     protected void SetIVs(PKM pk)
     {
-        if (IVs.Count != 0)
-            pk.SetRandomIVsTemplate((int[])IVs, FlawlessIVCount);
+        if (IVs.IsSpecified)
+            pk.SetRandomIVsTemplate(IVs, FlawlessIVCount);
         else if (FlawlessIVCount > 0)
             pk.SetRandomIVs(minFlawless: FlawlessIVCount);
     }
@@ -249,12 +257,12 @@ public abstract record EncounterStatic(GameVersion Version) : IEncounterable, IM
 
     private bool IsMatchIVs(PKM pk)
     {
-        if (IVs.Count == 0)
+        if (!IVs.IsSpecified)
             return true; // nothing to check, IVs are random
         if (Generation <= 2 && pk.Format > 2)
             return true; // IVs are regenerated on VC transfer upward
 
-        return Legal.GetIsFixedIVSequenceValidSkipRand((int[])IVs, pk);
+        return Legal.GetIsFixedIVSequenceValidSkipRand(IVs, pk);
     }
 
     protected virtual bool IsMatchForm(PKM pk, EvoCriteria evo)

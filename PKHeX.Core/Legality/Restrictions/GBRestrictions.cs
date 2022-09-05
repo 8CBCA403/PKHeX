@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 using static PKHeX.Core.Legal;
 using static PKHeX.Core.GameVersion;
@@ -13,7 +12,7 @@ namespace PKHeX.Core;
 /// </summary>
 internal static class GBRestrictions
 {
-    private static readonly HashSet<int> Stadium_GiftSpecies = new()
+    private static readonly HashSet<byte> Stadium_GiftSpecies = new()
     {
         (int)Bulbasaur,
         (int)Charmander,
@@ -35,7 +34,7 @@ internal static class GBRestrictions
     /// <summary>
     /// Species that have a catch rate value that is different from their pre-evolutions, and cannot be obtained directly.
     /// </summary>
-    internal static readonly HashSet<int> Species_NotAvailable_CatchRate = new()
+    internal static readonly HashSet<byte> Species_NotAvailable_CatchRate = new()
     {
         (int)Butterfree,
         (int)Pidgeot,
@@ -56,7 +55,7 @@ internal static class GBRestrictions
         (int)Dragonite,
     };
 
-    internal static readonly HashSet<int> Trade_Evolution1 = new()
+    internal static readonly HashSet<byte> Trade_Evolution1 = new()
     {
         (int)Kadabra,
         (int)Machoke,
@@ -64,7 +63,7 @@ internal static class GBRestrictions
         (int)Haunter,
     };
 
-    public static bool RateMatchesEncounter(int species, GameVersion version, byte rate)
+    public static bool RateMatchesEncounter(ushort species, GameVersion version, byte rate)
     {
         if (version.Contains(YW))
         {
@@ -84,25 +83,25 @@ internal static class GBRestrictions
         foreach (var entry in chain)
         {
             var s = entry.Species;
-            if (Species_NotAvailable_CatchRate.Contains(s))
+            if (Species_NotAvailable_CatchRate.Contains((byte)s))
                 continue;
             if (catch_rate == PersonalTable.RB[s].CatchRate || catch_rate == PersonalTable.Y[s].CatchRate)
                 return true;
         }
 
         // Krabby encounter trade special catch rate
-        int species = pk.Species;
+        ushort species = pk.Species;
         if (catch_rate == 204 && (species is (int)Krabby or (int)Kingler))
             return true;
 
-        if (catch_rate is (167 or 168) && Stadium_GiftSpecies.Contains(species))
+        if (catch_rate is (167 or 168) && Stadium_GiftSpecies.Contains((byte)species))
             return true;
 
         return false;
     }
 
     /// <summary>
-    /// Checks if the <see cref="pk"/> can inhabit <see cref="GameVersion.Gen1"></see>
+    /// Checks if the <see cref="pk"/> can inhabit <see cref="Gen1"></see>
     /// </summary>
     /// <param name="pk">Data to check</param>
     /// <returns>true if can inhabit, false if not.</returns>
@@ -120,7 +119,7 @@ internal static class GBRestrictions
             return false;
 
         // Sanity check species, if it could have existed as a pre-evolution.
-        int species = pk.Species;
+        ushort species = pk.Species;
         if (species <= MaxSpeciesID_1)
             return true;
         return EvolutionLegality.FutureEvolutionsGen1.Contains(species);
@@ -162,7 +161,7 @@ internal static class GBRestrictions
         if (!matchAny)
             return PotentialGBOrigin.Either;
 
-        if (HeldItems_GSC.Contains(catch_rate))
+        if (IsTradebackCatchRate(catch_rate))
             return PotentialGBOrigin.Either;
 
         return PotentialGBOrigin.Gen1Only;
@@ -221,7 +220,7 @@ internal static class GBRestrictions
         _ => RateMatchesEncounter(enc.Species, enc.Version, pk1.Catch_Rate),
     };
 
-    public static bool IsTradebackCatchRate(byte rate) => HeldItems_GSC.Contains(rate);
+    public static bool IsTradebackCatchRate(byte rate) => Array.IndexOf(HeldItems_GSC, rate) != -1;
 }
 
 public enum PotentialGBOrigin

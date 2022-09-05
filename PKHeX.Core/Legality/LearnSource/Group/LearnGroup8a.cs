@@ -13,7 +13,7 @@ public sealed class LearnGroup8a : ILearnGroup
     public ILearnGroup? GetPrevious(PKM pk, EvolutionHistory history, IEncounterTemplate enc, LearnOption option) => null;
     public bool HasVisited(PKM pk, EvolutionHistory history) => history.HasVisitedPLA;
 
-    public bool Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvolutionHistory history,
+    public bool Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvolutionHistory history,
         IEncounterTemplate enc, MoveSourceType types = MoveSourceType.All, LearnOption option = LearnOption.Current)
     {
         var evos = history.Gen8a;
@@ -23,7 +23,7 @@ public sealed class LearnGroup8a : ILearnGroup
         return MoveResult.AllParsed(result);
     }
 
-    private static void Check(Span<MoveResult> result, ReadOnlySpan<int> current, PKM pk, EvoCriteria evo, int stage)
+    private static void Check(Span<MoveResult> result, ReadOnlySpan<ushort> current, PKM pk, EvoCriteria evo, int stage)
     {
         var game = LearnSource8LA.Instance;
         if (!game.TryGetPersonal(evo.Species, evo.Form, out var pi))
@@ -75,15 +75,19 @@ public sealed class LearnGroup8a : ILearnGroup
 
     private static void FlagEncounterMoves(IEncounterTemplate enc, Span<bool> result)
     {
-        if (enc is IMoveset { Moves: int[] { Length: not 0 } x })
+        if (enc is IMoveset { Moves: { HasMoves: true } x })
         {
-            foreach (var move in x)
-                result[move] = true;
+            result[x.Move4] = true;
+            result[x.Move3] = true;
+            result[x.Move2] = true;
+            result[x.Move1] = true;
         }
-        if (enc is IRelearn { Relearn: int[] { Length: not 0 } r })
+        if (enc is IRelearn { Relearn: { HasMoves: true } r })
         {
-            foreach (var move in r)
-                result[move] = true;
+            result[r.Move4] = true;
+            result[r.Move3] = true;
+            result[r.Move2] = true;
+            result[r.Move1] = true;
         }
     }
 }
