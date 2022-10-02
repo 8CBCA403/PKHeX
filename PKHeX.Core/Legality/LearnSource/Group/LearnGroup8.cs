@@ -9,6 +9,7 @@ public sealed class LearnGroup8 : ILearnGroup
 {
     public static readonly LearnGroup8 Instance = new();
     private const int Generation = 8;
+    private const EntityContext Context = EntityContext.Gen8;
 
     public ILearnGroup? GetPrevious(PKM pk, EvolutionHistory history, IEncounterTemplate enc, LearnOption option)
     {
@@ -44,7 +45,7 @@ public sealed class LearnGroup8 : ILearnGroup
 
         CheckSharedMoves(result, current, evos[0]);
 
-        if (option is not LearnOption.Current && pk.IsOriginalMovesetDeleted() && enc is EncounterEgg { Generation: Generation } egg)
+        if (option is not LearnOption.Current && types.HasFlagFast(MoveSourceType.Encounter) && pk.IsOriginalMovesetDeleted() && enc is EncounterEgg { Generation: Generation } egg)
             CheckEncounterMoves(result, current, egg);
 
         return MoveResult.AllParsed(result);
@@ -129,7 +130,7 @@ public sealed class LearnGroup8 : ILearnGroup
     public void GetAllMoves(Span<bool> result, PKM pk, EvolutionHistory history, IEncounterTemplate enc, MoveSourceType types = MoveSourceType.All, LearnOption option = LearnOption.Current)
     {
         var evos = history.Gen8;
-        if (types.HasFlagFast(MoveSourceType.Encounter) && enc.Generation == Generation)
+        if (types.HasFlagFast(MoveSourceType.Encounter) && enc.Context == Context)
         {
             FlagEncounterMoves(enc, result);
             if (enc is EncounterStatic8N r && r.IsDownLeveled(pk))
