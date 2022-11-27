@@ -274,4 +274,40 @@ public sealed class SAV9SV : SaveFile, ISaveBlock9Main, ISCBlockArray, ISaveFile
         var b = Blocks.GetBlock(SaveBlockAccessor9SV.KBoxWallpapers);
         b.Data[box] = (byte)value;
     }
+
+    public void CollectAllStakes()
+    {
+        for (int i = 14; i <= 17; i++)
+        {
+            for (int f = 1; f <= 8; f++)
+            {
+                var flag = $"FEVT_SUB_{i:000}_KUI_{f:00}_RELEASE".AsSpan();
+                var hash = (uint)FnvHash.HashFnv1a_64(flag);
+                var block = Accessor.GetBlock(hash);
+                block.ChangeBooleanType(SCTypeCode.Bool2);
+            }
+        }
+
+        var blocks = new[]
+        {
+            "WEVT_SUB_014_EVENT_STATE_UTHUWA",
+            "WEVT_SUB_015_EVENT_STATE_TSURUGI",
+            "WEVT_SUB_016_EVENT_STATE_MOKKAN",
+            "WEVT_SUB_017_EVENT_STATE_MAGATAMA",
+        };
+
+        foreach (var block in blocks)
+            Accessor.GetBlock(block).SetValue(1); // lift seals from each shrine
+    }
+
+    public void UnlockAllTMRecipes()
+    {
+        for (int i = 1; i <= 171; i++)
+        {
+            var flag = $"FSYS_UI_WAZA_MACHINE_RELEASE_{i:000}".AsSpan();
+            var hash = (uint)FnvHash.HashFnv1a_64(flag);
+            var block = Accessor.GetBlock(hash);
+            block.ChangeBooleanType(SCTypeCode.Bool2);
+        }
+    }
 }

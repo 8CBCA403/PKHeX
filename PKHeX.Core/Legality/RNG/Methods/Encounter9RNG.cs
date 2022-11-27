@@ -5,14 +5,15 @@ namespace PKHeX.Core;
 
 public static class Encounter9RNG
 {
-    public static bool TryApply32(this EncounterTera9 enc, PK9 pk, in ulong init, in GenerateParam9 param, EncounterCriteria criteria)
+    public static bool TryApply32<TEnc>(this TEnc enc, PK9 pk, in ulong init, in GenerateParam9 param, EncounterCriteria criteria)
+        where  TEnc : IEncounterTemplate, ITeraRaid9
     {
         const int maxCtr = 100_000;
         var rand = new Xoroshiro128Plus(init);
         for (int ctr = 0; ctr < maxCtr; ctr++)
         {
             uint seed = (uint)rand.NextInt(uint.MaxValue);
-            if (!Tera9RNG.IsMatchStarChoice(seed, enc.Stars, enc.RandRate, enc.RandRateMinScarlet, enc.RandRateMinViolet))
+            if (!enc.CanBeEncountered(seed))
                 continue;
             if (!GenerateData(pk, param, criteria, seed))
                 continue;
@@ -122,7 +123,9 @@ public static class Encounter9RNG
             return false;
         pk.Gender = gender;
 
-        var nature = (int)rand.NextInt(25);
+        byte nature = pk.Species == (int)Species.Toxtricity
+                ? ToxtricityUtil.GetRandomNature(ref rand, pk.Form)
+                : (byte)rand.NextInt(25);
         if (criteria.Nature != Nature.Random && nature != (int)criteria.Nature)
             return false;
         pk.Nature = pk.StatNature = nature;
@@ -223,7 +226,9 @@ public static class Encounter9RNG
         if (pk.Gender != gender)
             return false;
 
-        var nature = (int)rand.NextInt(25);
+        int nature = pk.Species == (int)Species.Toxtricity
+                ? ToxtricityUtil.GetRandomNature(ref rand, pk.Form)
+                : (byte)rand.NextInt(25);
         if (pk.Nature != nature)
             return false;
 
@@ -294,4 +299,13 @@ public static class Encounter9RNG
         var xor = pid ^ oid;
         return (xor ^ (xor >> 16)) & 0xFFFF;
     }
+}
+
+public interface ITeraRaid9 : IGemType
+{
+    bool IsDistribution { get; }
+    byte Index { get; }
+    byte Stars { get; }
+    byte RandRate { get; }
+    bool CanBeEncountered(uint seed);
 }
