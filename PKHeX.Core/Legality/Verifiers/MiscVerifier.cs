@@ -174,6 +174,7 @@ public sealed class MiscVerifier : Verifier
     private static readonly HashSet<int> UnreleasedSV = new()
     {
         (int)Species.Charmander, // Charmander : distribution raids happening on Dec 1, 2022
+        (int)Species.Raichu | (1 << 11), // Diglett-1
         (int)Species.Diglett | (1 << 11), // Diglett-1
         (int)Species.Meowth | (1 << 11), // Meowth-1
         (int)Species.Growlithe | (1 << 11), // Growlithe-1
@@ -198,6 +199,9 @@ public sealed class MiscVerifier : Verifier
 
         // Silly Workaround for evolution chain reversal not being iteratively implemented -- block Hisuians
         (int)Species.Sliggoo | (1 << 11),
+        (int)Species.Avalugg | (1 << 11),
+        (int)Species.Lilligant | (1 << 11),
+        (int)Species.Braviary | (1 << 11),
         (int)Species.Overqwil,
         (int)Species.Wyrdeer,
         (int)Species.Kleavor,
@@ -797,7 +801,18 @@ public sealed class MiscVerifier : Verifier
                 if ((pi ??= GetPersonal(evos[0])).TMHM[i])
                     continue;
 
-                data.AddLine(GetInvalid(string.Format(LMoveSourceTR, GetMoveName(i))));
+                // Zoroark-0 cannot learn Encore via TM, but the pre-evolution Zorua-0 can via TM.
+                // Double check if any pre-evolutions can learn the TM.
+                bool preEvoHas = false;
+                for (int p = 1; p < evos.Length; p++)
+                {
+                    if (!GetPersonal(evos[p]).TMHM[i])
+                        continue;
+                    preEvoHas = true;
+                    break;
+                }
+                if (!preEvoHas)
+                    data.AddLine(GetInvalid(string.Format(LMoveSourceTR, GetMoveName(i))));
             }
         }
     }
