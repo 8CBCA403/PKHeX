@@ -90,6 +90,7 @@ public sealed class SaveBlockAccessor9SV : SCBlockAccessor, ISaveBlock9Main
     private const uint KBCATLotteryRewardItemArray = 0xA52B4811; // lottery_reward_item_array
     private const uint KBCATRaidEnemyArray = 0x0520A1B0; // raid_enemy_array
     private const uint KBCATRaidPriorityArray = 0x095451E4; // raid_priority_array
+    private const uint KBCATEventRaidIdentifier = 0x37B99B4D;
 
     #region YMAP - Display & Fly Flags -- internal name Fnv1aHash32
     private const uint FSYS_YMAP_SCENARIO_DAN_AKU = 0x1EE90D7F;
@@ -762,8 +763,8 @@ public sealed class SaveBlockAccessor9SV : SCBlockAccessor, ISaveBlock9Main
     private const uint WEVT_GYM_DENKI_TEST_NPC_01 = 0x044F4DCE;
     private const uint WEVT_GYM_DENKI_TEST_NPC_02 = 0x044F4C1B;
     private const uint KIndexReceivedBadgePsychic = 0x3B819021; // WEVT_GYM_ESPER_CLEAR
-    private const uint KHighScoreESPExercise = 0x287ED11F; // WEVT_SUB_GYM_ESPER_ENDLESS_HIGH_SCORE
-    private const uint WEVT_SUB_GYM_ESPER_EXERCISE_LEVEL = 0x4874E130;
+    private const uint KESPExerciseKnockoutHighScore = 0x287ED11F; // WEVT_SUB_GYM_ESPER_ENDLESS_HIGH_SCORE
+    private const uint KESPExerciseModesUnlocked = 0x4874E130; // WEVT_SUB_GYM_ESPER_EXERCISE_LEVEL
     private const uint KIndexReceivedBadgeGhost = 0xCDA61DED; // WEVT_GYM_GHOST_CLEAR
     private const uint WEVT_GYM_GHOST_TALKED_TRAINER = 0x706D7FB5;
     private const uint KSnowSlopeRunBestTime1 = 0x594C72A5; // WEVT_GYM_KOORI_BEST_RECORD_TIME_01
