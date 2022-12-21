@@ -567,12 +567,18 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
 
     private void ClickGender(object sender, EventArgs e)
     {
-        if (!Entity.PersonalInfo.IsDualGender)
+        var pi = Entity.PersonalInfo;
+        if (!pi.IsDualGender)
+        {
+            var expect = pi.FixedGender();
+            if (UC_Gender.Gender != expect)
+                UC_Gender.Gender = expect;
             return; // can't toggle
+        }
 
         var (canToggle, gender) = UC_Gender.ToggleGender();
         if (!canToggle)
-            return;
+            gender = UC_Gender.Gender = 0; // fix bad genders
         if (Entity.Format <= 2)
         {
             Stats.SetATKIVGender(gender);
@@ -604,11 +610,22 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
     private void ClickPPUps(object sender, EventArgs e)
     {
         bool min = (ModifierKeys & Keys.Control) != 0 || !Legal.IsPPUpAvailable(Entity);
-        static int GetValue(ListControl cb, bool zero) => zero || WinFormsUtil.GetIndex(cb) == 0 ? 0 : 3;
-        CB_PPu1.SelectedIndex = GetValue(CB_Move1, min);
-        CB_PPu2.SelectedIndex = GetValue(CB_Move2, min);
-        CB_PPu3.SelectedIndex = GetValue(CB_Move3, min);
-        CB_PPu4.SelectedIndex = GetValue(CB_Move4, min);
+        if (min)
+        {
+            CB_PPu1.SelectedIndex = CB_PPu2.SelectedIndex = CB_PPu3.SelectedIndex = CB_PPu4.SelectedIndex = 0;
+            return;
+        }
+        
+        static int GetValue(ListControl cb)
+        {
+            ushort move = (ushort)WinFormsUtil.GetIndex(cb);
+            return Legal.IsPPUpAvailable(move) ? 3 : 0;
+        }
+
+        CB_PPu1.SelectedIndex = GetValue(CB_Move1);
+        CB_PPu2.SelectedIndex = GetValue(CB_Move2);
+        CB_PPu3.SelectedIndex = GetValue(CB_Move3);
+        CB_PPu4.SelectedIndex = GetValue(CB_Move4);
     }
 
     private void ClickMarking(object sender, EventArgs e)
@@ -983,7 +1000,10 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
     private void RefreshFormArguments()
     {
         if (Entity is not IFormArgument f)
+        {
+            L_FormArgument.Visible = false;
             return;
+        }
 
         if (FieldsLoaded)
             FA_Form.SaveArgument(f);
@@ -1419,6 +1439,9 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
             // Wipe egg memories
             if (Entity.Format >= 6 && ModifyPKM)
                 Entity.ClearMemories();
+
+            if (Entity is PK9)
+                CB_GameOrigin.SelectedValue = 0;
         }
         else // Not Egg
         {
@@ -1841,6 +1864,8 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         L_AlphaMastered.Visible = CB_AlphaMastered.Visible = t is PA8;
         FLP_ObedienceLevel.Visible = t is IObedienceLevel;
         Contest.ToggleInterface(Entity, Entity.Context);
+        if (t is not IFormArgument)
+            L_FormArgument.Visible = false;
 
         ToggleInterface(Entity.Format);
     }
