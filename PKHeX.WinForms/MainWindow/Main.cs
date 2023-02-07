@@ -211,9 +211,10 @@ public partial class Main : Form
     private void NotifyNewVersionAvailable(Version ver)
     {
         var date = $"{2000 + ver.Major:00}{ver.Minor:00}{ver.Build:00}";
-        L_UpdateAvailable.Text = $"{MsgProgramUpdateAvailable} {date}";
-        L_UpdateAvailable.Click += (_, _) => Process.Start(new ProcessStartInfo(ThreadPath) { UseShellExecute = true });
-        L_UpdateAvailable.Visible = true;
+        var lbl = L_UpdateAvailable;
+        lbl.Text = $"{MsgProgramUpdateAvailable} {date}";
+        lbl.Click += (_, _) => Process.Start(new ProcessStartInfo(ThreadPath) { UseShellExecute = true });
+        lbl.Visible = lbl.TabStop = lbl.Enabled = true;
     }
 
     private static void FormLoadConfig(out bool BAKprompt, out bool showChangelog)
@@ -368,7 +369,11 @@ public partial class Main : Form
     {
         var forms = Application.OpenForms.OfType<Form>().Where(IsPopupFormType).ToArray();
         foreach (var f in forms)
+        {
+            if (f.InvokeRequired)
+                continue; // from another thread, not our scope.
             f.Close();
+        }
     }
 
     private static bool IsPopupFormType(Form z) => z is not (Main or SplashScreen or SAV_FolderList);
