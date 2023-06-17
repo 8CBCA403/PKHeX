@@ -248,6 +248,8 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
     public byte OT_Feeling { get => Data[CardStart + 0x27B]; set => Data[CardStart + 0x27B] = value; }
     public ushort OT_TextVar { get => ReadUInt16LittleEndian(Data.AsSpan(CardStart + 0x27C)); set => WriteUInt16LittleEndian(Data.AsSpan(CardStart + 0x27C), value); }
 
+    public ushort Checksum => ReadUInt16LittleEndian(Data.AsSpan(0x2CC));
+
     // Meta Accessible Properties
     public override int[] IVs
     {
@@ -489,7 +491,12 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
         if (pk.Species == (int)Core.Species.Meowstic)
             pk.Form = (byte)(pk.Gender & 1);
 
-        pk.MetDate = IsDateRestricted && EncounterServerDate.WC8Gifts.TryGetValue(CardID, out var dt) ? dt : DateOnly.FromDateTime(DateTime.Now);
+        var date = GetSuggestedDate();
+        pk.MetDate = date;
+
+        // Prior to 3.0.0, HOME would set the Encryption Constant exactly and not give a random value if it was 0.
+        if (IsHOMEGiftOld(date))
+            pk.EncryptionConstant = EncryptionConstant;
 
         var nickname_language = GetLanguage(language);
         pk.Language = nickname_language != 0 ? nickname_language : tr.Language;
@@ -509,7 +516,7 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
             SetEggMetData(pk);
         pk.CurrentFriendship = pk.IsEgg ? pi.HatchCycles : pi.BaseFriendship;
 
-        if (!IsHOMEGift)
+        if (!IsHOMEGiftOld(date))
         {
             pk.HeightScalar = PokeSizeUtil.GetRandomScalar();
             pk.WeightScalar = PokeSizeUtil.GetRandomScalar();
@@ -518,6 +525,24 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
         pk.ResetPartyStats();
         pk.RefreshChecksum();
         return pk;
+    }
+
+    private bool IsHOMEGiftOld(DateOnly date)
+    {
+        // 2023/05/30 -- every date prior [*,29th] is an old gift.
+        const int DayNumberHOME300 = 738669;
+        return IsHOMEGift && date.DayNumber < DayNumberHOME300;
+    }
+
+    private DateOnly GetSuggestedDate()
+    {
+        if (!IsDateRestricted)
+            return DateOnly.FromDateTime(DateTime.Now);
+        if (EncounterServerDate.WC8GiftsChk.TryGetValue(Checksum, out var range))
+            return range.Start;
+        if (EncounterServerDate.WC8Gifts.TryGetValue(CardID, out range))
+            return range.Start;
+        return DateOnly.FromDateTime(DateTime.Now);
     }
 
     private void SetEggMetData(PKM pk)
@@ -556,7 +581,7 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
         _ => AbilityPermission.Any12H,
     };
 
-    private uint GetPID(ITrainerID32 tr, ShinyType8 type) => type switch
+    private uint GetPID(PKM tr, ShinyType8 type) => type switch
     {
         ShinyType8.Never        => GetAntishiny(tr), // Random, Never Shiny
         ShinyType8.Random       => Util.Rand32(), // Random, Any
@@ -566,7 +591,7 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
         _ => throw new ArgumentOutOfRangeException(nameof(type)),
     };
 
-    private uint GetFixedPID(ITrainerID32 tr)
+    private uint GetFixedPID(PKM tr)
     {
         var pid = PID;
         if (pid != 0 && ID32 != 0)
@@ -646,6 +671,13 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
             }
             else if (IsHOMEGift)
             {
+                // Prior to 3.0.0, HOME would set the Encryption Constant exactly and not give a random value if it was 0.
+                if (pk.MetDate is { } x && IsHOMEGiftOld(x))
+                {
+                    // HOME gifts -- PID and EC are zeroes...
+                    if (EncryptionConstant != pk.EncryptionConstant)
+                        return false;
+                }
                 if (IsShiny)
                 {
                     if (!pk.IsShiny)
@@ -701,7 +733,7 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
         if (pk is PK8 pk8 && pk8.DynamaxLevel < DynamaxLevel)
             return false;
 
-        if (IsHOMEGift && pk is IScaledSize s and not IHomeTrack { HasTracker: true })
+        if (IsHOMEGift && pk is IScaledSize s and not IHomeTrack { HasTracker: true } && ParseSettings.IgnoreTransferIfNoTracker)
         {
             if (s.HeightScalar != 0)
                 return false;
@@ -719,7 +751,10 @@ public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDyn
         var type = PIDType;
         if (type is ShinyType8.Never or ShinyType8.Random)
             return true;
-        return pk.PID == GetPID(pk, type);
+        if (pk.PID == GetPID(pk, type))
+            return true;
+
+        return false;
     }
 
     private bool IsHOMEShinyPossible()
