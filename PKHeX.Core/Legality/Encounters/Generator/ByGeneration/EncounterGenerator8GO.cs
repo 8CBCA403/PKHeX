@@ -12,6 +12,9 @@ public sealed class EncounterGenerator8GO : IEncounterGenerator
 
     public IEnumerable<IEncounterable> GetPossible(PKM pk, EvoCriteria[] chain, GameVersion game, EncounterTypeGroup groups)
     {
+        if (chain.Length == 0)
+            yield break;
+
         if (groups.HasFlag(Slot))
         {
             var table = EncountersGO.SlotsGO;
@@ -38,6 +41,8 @@ public sealed class EncounterGenerator8GO : IEncounterGenerator
 
     public IEnumerable<IEncounterable> GetEncounters(PKM pk, EvoCriteria[] chain, LegalInfo info)
     {
+        if (chain.Length == 0)
+            yield break;
         if (!CanBeWildEncounter(pk))
             yield break;
 
@@ -50,6 +55,9 @@ public sealed class EncounterGenerator8GO : IEncounterGenerator
             foreach (var evo in chain)
             {
                 if (area.Species != evo.Species)
+                    continue;
+
+                if (area.Form != evo.Form && !FormInfo.IsFormChangeable(area.Species, area.Form, evo.Form, EntityContext.Gen8, pk.Context))
                     continue;
 
                 var slots = area.GetMatchingSlots(pk, evo);
