@@ -18,13 +18,13 @@ public sealed class EvolutionReverseLookup : IEvolutionLookup
         MaxSpecies = maxSpecies;
     }
 
-    private void Register(EvolutionLink link, ushort species)
+    private void Register(in EvolutionLink link, int index)
     {
-        ref var node = ref Nodes[species];
+        ref var node = ref Nodes[index];
         node.Add(link);
     }
 
-    public void Register(EvolutionLink link, ushort species, byte form)
+    public void Register(in EvolutionLink link, ushort species, byte form)
     {
         if (form == 0)
         {
@@ -32,15 +32,19 @@ public sealed class EvolutionReverseLookup : IEvolutionLookup
             return;
         }
 
-        int key = GetKey(species, form);
-        if (!KeyLookup.TryGetValue(key, out var index))
-        {
-            index = Nodes.Length - KeyLookup.Count - 1;
-            KeyLookup.Add(key, index);
-        }
+        int index = GetOrAppendIndex(species, form);
+        Register(link, index);
+    }
 
-        ref var node = ref Nodes[index];
-        node.Add(link);
+    private int GetOrAppendIndex(ushort species, byte form)
+    {
+        int key = GetKey(species, form);
+        if (KeyLookup.TryGetValue(key, out var index))
+            return index;
+
+        index = Nodes.Length - KeyLookup.Count - 1;
+        KeyLookup.Add(key, index);
+        return index;
     }
 
     private int GetIndex(ushort species, byte form)
@@ -54,10 +58,5 @@ public sealed class EvolutionReverseLookup : IEvolutionLookup
     }
 
     private static int GetKey(ushort species, byte form) => species | form << 11;
-    public ref EvolutionNode this[ushort species, byte form] => ref Nodes[GetIndex(species, form)];
-}
-
-public interface IEvolutionLookup
-{
-    ref EvolutionNode this[ushort species, byte form] { get; }
+    public ref readonly EvolutionNode this[ushort species, byte form] => ref Nodes[GetIndex(species, form)];
 }
