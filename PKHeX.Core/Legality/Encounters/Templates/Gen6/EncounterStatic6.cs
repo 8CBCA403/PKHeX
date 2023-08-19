@@ -56,12 +56,13 @@ public sealed record EncounterStatic6(GameVersion Version)
         {
             EncryptionConstant = Util.Rand32(),
             Species = Species,
+            Form = Form,
             CurrentLevel = LevelMin,
             Met_Location = Location,
             Met_Level = LevelMin,
             MetDate = EncounterDate.GetDate3DS(),
             Ball = (byte)(FixedBall is Ball.None ? Ball.Poke : FixedBall),
-
+            FatefulEncounter = FatefulEncounter,
             ID32 = tr.ID32,
             Version = (byte)version,
             Language = lang,

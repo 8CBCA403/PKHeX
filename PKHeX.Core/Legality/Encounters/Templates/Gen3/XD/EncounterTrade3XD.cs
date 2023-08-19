@@ -46,7 +46,7 @@ public sealed record EncounterTrade3XD : IEncounterable, IEncounterMatch, IEncou
         Nicknames = nicknames;
     }
 
-    public string Name => "Static Encounter";
+    public string Name => "Trade Encounter";
     public string LongName => Name;
     public byte LevelMin => Level;
     public byte LevelMax => Level;
@@ -69,7 +69,7 @@ public sealed record EncounterTrade3XD : IEncounterable, IEncounterMatch, IEncou
             Met_Level = Level,
             Version = (byte)GameVersion.CXD,
             Ball = (byte)Ball.Poke,
-
+            FatefulEncounter = FatefulEncounter,
             Language = lang,
             OT_Name = TrainerNames[lang],
             OT_Gender = 0,

@@ -55,6 +55,7 @@ public sealed record EncounterStatic4(GameVersion Version)
         var pk = new PK4
         {
             Species = Species,
+            Form = Form,
             CurrentLevel = LevelMin,
             OT_Friendship = PersonalTable.HGSS[Species].BaseFriendship,
 
@@ -89,21 +90,22 @@ public sealed record EncounterStatic4(GameVersion Version)
         return pk;
     }
 
-    private void SetPINGA(PKM pk, EncounterCriteria criteria)
+    private void SetPINGA(PK4 pk, EncounterCriteria criteria)
     {
+        // Pichu is special -- use Pokewalker method
+        if (Species == (int)Core.Species.Pichu)
+        {
+            PIDGenerator.SetRandomPIDPokewalker(pk, (byte)Nature, Gender);
+            criteria.SetRandomIVs(pk);
+            return;
+        }
+
         var pi = pk.PersonalInfo;
         int gender = criteria.GetGender(Gender, pi);
         int nature = (int)criteria.GetNature(Nature);
         int ability = criteria.GetAbilityFromNumber(Ability);
-
-        PIDType type = this switch
-        {
-            { Shiny: Shiny.Always } => PIDType.ChainShiny,
-            { Species: (ushort)Core.Species.Pichu } => PIDType.Pokewalker,
-            _ => PIDType.Method_1,
-        };
-        PIDGenerator.SetRandomWildPID(pk, pk.Format, nature, ability, gender, type);
-        pk.StatNature = pk.Nature;
+        PIDType type = this is { Shiny: Shiny.Always } ? PIDType.ChainShiny : PIDType.Method_1;
+        PIDGenerator.SetRandomWildPID4(pk, nature, ability, gender, type);
     }
 
     #endregion

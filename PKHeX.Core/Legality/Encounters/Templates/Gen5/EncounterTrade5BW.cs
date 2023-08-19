@@ -72,6 +72,7 @@ public sealed record EncounterTrade5BW : IEncounterable, IEncounterMatch, IFixed
         {
             PID = PID,
             Species = Species,
+            Form = Form,
             CurrentLevel = Level,
             Met_Location = Location,
             Met_Level = Level,
@@ -96,8 +97,8 @@ public sealed record EncounterTrade5BW : IEncounterable, IEncounterMatch, IFixed
         };
 
         EncounterUtil1.SetEncounterMoves(pk, version, Level);
-        pk.SetRandomIVsTemplate(IVs, 0);
-        pk.RefreshAbility((byte)Ability >> 1);
+        criteria.SetRandomIVs(pk, IVs);
+        pk.RefreshAbility(criteria.GetAbilityFromNumber(Ability));
         pk.ResetPartyStats();
 
         return pk;

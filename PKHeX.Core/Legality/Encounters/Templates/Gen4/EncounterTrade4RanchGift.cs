@@ -80,6 +80,7 @@ public sealed record EncounterTrade4RanchGift
         var pk = new PK4
         {
             Species = Species,
+            Form = Form,
             CurrentLevel = actualLevel,
             Met_Location = Location,
             Met_Level = Level,
@@ -94,7 +95,6 @@ public sealed record EncounterTrade4RanchGift
 
             OT_Friendship = PersonalTable.DP[Species, Form].BaseFriendship,
 
-            IsNicknamed = true,
             Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
 
             HT_Name = tr.OT,
@@ -108,7 +108,7 @@ public sealed record EncounterTrade4RanchGift
         return pk;
     }
 
-    private void SetPINGA(PKM pk, EncounterCriteria criteria)
+    private void SetPINGA(PK4 pk, EncounterCriteria criteria)
     {
         var pid = FatefulEncounter ? Util.Rand32() : PID;
         pk.PID = pid;
@@ -126,11 +126,13 @@ public sealed record EncounterTrade4RanchGift
 
     public bool IsMatchExact(PKM pk, EvoCriteria evo)
     {
-        if (pk.Met_Level != Level)
+        if (!IsMatchLevel(pk, evo))
+            return false;
+        if (pk.ID32 != ID32)
             return false;
         if (!IsMatchNatureGenderShiny(pk))
             return false;
-        if (pk.ID32 != ID32)
+        if (!IsMatchLocation(pk))
             return false;
         if (evo.Form != Form && !FormInfo.IsFormChangeable(Species, Form, pk.Form, Context, pk.Context))
             return false;
@@ -141,6 +143,26 @@ public sealed record EncounterTrade4RanchGift
         if (pk.IsEgg)
             return false;
         return true;
+    }
+
+    private bool IsMatchLocation(PKM pk)
+    {
+        // Met location is lost on transfer
+        if (pk is not G4PKM pk4)
+            return true;
+
+        var met = pk4.Met_Location;
+        return met == Location;
+    }
+
+    private bool IsMatchLevel(PKM pk, EvoCriteria evo)
+    {
+        if (pk.Format != 4) // Met Level lost on PK4=>PK5
+            return evo.LevelMax >= Level;
+
+        if (MetLocation != default)
+            return pk.Met_Level == Level;
+        return pk.Met_Level >= LevelMin;
     }
 
     private bool IsMatchNatureGenderShiny(PKM pk)
