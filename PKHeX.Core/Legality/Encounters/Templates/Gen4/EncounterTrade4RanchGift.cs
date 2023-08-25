@@ -77,6 +77,7 @@ public sealed record EncounterTrade4RanchGift
         var version = this.GetCompatibleVersion((GameVersion)tr.Game);
         int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)tr.Language, version);
         var actualLevel = CurrentLevel != default ? CurrentLevel : Level;
+        var pi = PersonalTable.DP[Species];
         var pk = new PK4
         {
             Species = Species,
@@ -86,6 +87,7 @@ public sealed record EncounterTrade4RanchGift
             Met_Level = Level,
             MetDate = EncounterDate.GetDateNDS(),
             Ball = (byte)FixedBall,
+            FatefulEncounter = FatefulEncounter,
 
             ID32 = ID32,
             Version = (byte)version,
@@ -93,7 +95,7 @@ public sealed record EncounterTrade4RanchGift
             OT_Gender = OTGender,
             OT_Name = TrainerNames[lang],
 
-            OT_Friendship = PersonalTable.DP[Species, Form].BaseFriendship,
+            OT_Friendship = pi.BaseFriendship,
 
             Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
 

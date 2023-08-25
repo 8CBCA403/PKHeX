@@ -41,6 +41,7 @@ public sealed record EncounterStatic2(ushort Species, byte Level, GameVersion Ve
     {
         var version = this.GetCompatibleVersion((GameVersion)tr.Game);
         int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)tr.Language, version);
+        var pi = PersonalTable.C[Species];
         var pk = new PK2
         {
             Species = Species,
@@ -49,14 +50,14 @@ public sealed record EncounterStatic2(ushort Species, byte Level, GameVersion Ve
             TID16 = tr.TID16,
             OT_Name = tr.OT,
 
-            OT_Friendship = PersonalTable.C[Species, Form].BaseFriendship,
+            OT_Friendship = pi.BaseFriendship,
 
             Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
         };
 
         if (EggEncounter)
         {
-            if (DizzyPunchEgg)
+            if (DizzyPunchEgg) // Fixed EXP value instead of exactly Level 5
                 pk.EXP = 125;
         }
         else if (Version == GameVersion.C || (Version == GameVersion.GSC && tr.Game == (int)GameVersion.C))
@@ -94,7 +95,7 @@ public sealed record EncounterStatic2(ushort Species, byte Level, GameVersion Ve
         if (EggEncounter && Moves.HasMoves) // Odd Egg
         {
             if (pk.Format > 2)
-                return false;
+                return false; // Can't be transferred to Gen7+
             if (!pk.HasMove((int)Move.DizzyPunch))
                 return false;
 

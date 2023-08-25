@@ -95,6 +95,7 @@ public sealed record EncounterTrade8 : IEncounterable, IEncounterMatch, IFixedTr
     {
         var version = this.GetCompatibleVersion((GameVersion)tr.Game);
         int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)tr.Language, version);
+        var pi = PersonalTable.SWSH[Species, Form];
         var pk = new PK8
         {
             PID = Util.Rand32(),
@@ -117,7 +118,7 @@ public sealed record EncounterTrade8 : IEncounterable, IEncounterMatch, IFixedTr
             OT_Intensity = OT_Intensity,
             OT_Feeling = OT_Feeling,
             OT_TextVar = OT_TextVar,
-            OT_Friendship = PersonalTable.SWSH[Species, Form].BaseFriendship,
+            OT_Friendship = pi.BaseFriendship,
 
             IsNicknamed = IsFixedNickname,
             Nickname = IsFixedNickname ? Nicknames[lang] : SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
@@ -126,23 +127,22 @@ public sealed record EncounterTrade8 : IEncounterable, IEncounterMatch, IFixedTr
             HT_Gender = tr.Gender,
             HT_Language = (byte)tr.Language,
             CurrentHandler = 1,
-            HT_Friendship = PersonalTable.SWSH[Species, Form].BaseFriendship,
+            HT_Friendship = pi.BaseFriendship,
         };
         if (Shiny == Shiny.Never && pk.IsShiny)
             pk.PID ^= 0x1000_0000u;
         pk.SetRelearnMoves(Relearn);
 
         EncounterUtil1.SetEncounterMoves(pk, version, Level);
-        SetPINGA(pk, criteria);
+        SetPINGA(pk, criteria, pi);
 
         pk.ResetPartyStats();
 
         return pk;
     }
 
-    private void SetPINGA(PK8 pk, EncounterCriteria criteria)
+    private void SetPINGA(PK8 pk, EncounterCriteria criteria, PersonalInfo8SWSH pi)
     {
-        var pi = PersonalTable.SWSH[Species, Form];
         int gender = criteria.GetGender(Gender, pi);
         int nature = (int)criteria.GetNature(Nature);
         int ability = criteria.GetAbilityFromNumber(Ability);
