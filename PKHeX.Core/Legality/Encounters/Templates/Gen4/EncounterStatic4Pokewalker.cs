@@ -7,7 +7,7 @@ namespace PKHeX.Core;
 /// Generation 4 Pokéwalker  Encounter
 /// </summary>
 public sealed record EncounterStatic4Pokewalker(PokewalkerCourse4 Course)
-    : IEncounterable, IEncounterMatch, IEncounterConvertible<PK4>, IMoveset, IRandomCorrelation
+    : IEncounterable, IEncounterMatch, IEncounterConvertible<PK4>, IMoveset, IRandomCorrelation, IFixedGender
 {
     public int Generation => 4;
     public EntityContext Context => EntityContext.Gen4;
@@ -90,7 +90,10 @@ public sealed record EncounterStatic4Pokewalker(PokewalkerCourse4 Course)
         };
 
         SetPINGA(pk, criteria, pi);
-        EncounterUtil1.SetEncounterMoves(pk, Version, LevelMin);
+        if (Moves.HasMoves)
+            pk.SetMoves(Moves);
+        else
+            EncounterUtil1.SetEncounterMoves(pk, version, LevelMin);
 
         pk.ResetPartyStats();
         return pk;
@@ -99,7 +102,7 @@ public sealed record EncounterStatic4Pokewalker(PokewalkerCourse4 Course)
     private void SetPINGA(PK4 pk, EncounterCriteria criteria, PersonalInfo4 pi)
     {
         int gender = criteria.GetGender(Gender, pi);
-        int nature = (int)criteria.GetNature(Nature.Random);
+        int nature = (int)criteria.GetNature();
 
         // Cannot force an ability; nature-gender-trainerID only yield fixed PIDs.
         // int ability = criteria.GetAbilityFromNumber(Ability, pi);

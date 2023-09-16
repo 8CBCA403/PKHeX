@@ -21,7 +21,7 @@ public sealed record EncounterDist9
 
     public required ushort Species { get; init; }
     public required byte Form { get; init; }
-    public required sbyte Gender { get; init; }
+    public required byte Gender { get; init; }
     public required AbilityPermission Ability { get; init; }
     public required byte FlawlessIVCount { get; init; }
     public required Shiny Shiny { get; init; }
@@ -182,7 +182,7 @@ public sealed record EncounterDist9
     {
         Species = ReadUInt16LittleEndian(data),
         Form = data[0x02],
-        Gender = (sbyte)(data[0x03] - 1),
+        Gender = (byte)(data[0x03] - 1),
         Ability = GetAbility(data[0x04]),
         FlawlessIVCount = data[5],
         Shiny = data[0x06] switch { 0 => Shiny.Random, 1 => Shiny.Never, 2 => Shiny.Always, _ => throw new ArgumentOutOfRangeException(nameof(data)) },
@@ -251,7 +251,8 @@ public sealed record EncounterDist9
             OT_Friendship = pi.BaseFriendship,
             Met_Location = Location,
             Met_Level = LevelMin,
-            Version = (int)version,
+            MetDate = EncounterDate.GetDateSwitch(),
+            Version = (byte)version,
             Ball = (byte)Ball.Poke,
 
             Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
@@ -287,7 +288,7 @@ public sealed record EncounterDist9
     {
         if (!this.IsLevelWithinRange(pk.Met_Level))
             return false;
-        if (Gender != -1 && pk.Gender != Gender)
+        if (Gender != FixedGenderUtil.GenderRandom && pk.Gender != Gender)
             return false;
         if (!IsMatchEggLocation(pk))
             return false;

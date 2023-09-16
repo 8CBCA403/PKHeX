@@ -6,7 +6,7 @@ namespace PKHeX.Core;
 /// Generation 4 Static Encounter
 /// </summary>
 public sealed record EncounterStatic4(GameVersion Version)
-    : IEncounterable, IEncounterMatch, IEncounterConvertible<PK4>, IMoveset, IGroundTypeTile, IFatefulEncounterReadOnly, IFixedGender, IRandomCorrelation
+    : IEncounterable, IEncounterMatch, IEncounterConvertible<PK4>, IMoveset, IGroundTypeTile, IFatefulEncounterReadOnly, IFixedGender, IRandomCorrelation, IFixedNature
 {
     public int Generation => 4;
     public EntityContext Context => EntityContext.Gen4;
@@ -26,7 +26,7 @@ public sealed record EncounterStatic4(GameVersion Version)
     public byte Form { get; init; }
     public Shiny Shiny { get; init; }
     public ushort EggLocation { get; init; }
-    public sbyte Gender { get; init; } = -1;
+    public byte Gender { get; init; } = FixedGenderUtil.GenderRandom;
 
     public string Name => "Static Encounter";
     public string LongName => Name;
@@ -83,9 +83,16 @@ public sealed record EncounterStatic4(GameVersion Version)
             pk.Egg_Location = EggLocation;
             pk.EggMetDate = pk.MetDate;
         }
+        else if (Species == (int)Core.Species.Giratina && Form == 1)
+        {
+            pk.HeldItem = 0112; // Griseous Orb
+        }
 
         SetPINGA(pk, criteria, pi);
-        EncounterUtil1.SetEncounterMoves(pk, Version, LevelMin);
+        if (Moves.HasMoves)
+            pk.SetMoves(Moves);
+        else
+            EncounterUtil1.SetEncounterMoves(pk, version, LevelMin);
 
         pk.ResetPartyStats();
         return pk;
@@ -100,7 +107,7 @@ public sealed record EncounterStatic4(GameVersion Version)
             criteria.SetRandomIVs(pk);
             return;
         }
-        
+
         int gender = criteria.GetGender(Gender, pi);
         int nature = (int)criteria.GetNature(Nature);
         int ability = criteria.GetAbilityFromNumber(Ability);
@@ -126,7 +133,7 @@ public sealed record EncounterStatic4(GameVersion Version)
             return false;
         if (!IsMatchLevel(pk, evo))
             return false;
-        if (Gender != -1 && pk.Gender != Gender)
+        if (Gender != FixedGenderUtil.GenderRandom && pk.Gender != Gender)
             return false;
         if (Form != evo.Form && !FormInfo.IsFormChangeable(Species, Form, pk.Form, Context, pk.Context))
             return false;

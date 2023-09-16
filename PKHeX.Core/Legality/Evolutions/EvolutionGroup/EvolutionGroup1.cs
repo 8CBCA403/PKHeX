@@ -10,12 +10,15 @@ public sealed class EvolutionGroup1 : IEvolutionGroup, IEvolutionEnvironment
     public IEvolutionGroup GetNext(PKM pk, EvolutionOrigin enc) => EvolutionGroup2.Instance;
     public IEvolutionGroup? GetPrevious(PKM pk, EvolutionOrigin enc) => pk.Format == 1 && ParseSettings.AllowGen1Tradeback ? EvolutionGroup2.Instance : null;
 
-    public void DiscardForOrigin(Span<EvoCriteria> result, PKM pk)
+    public void DiscardForOrigin(Span<EvoCriteria> result, PKM pk, EvolutionOrigin enc)
     {
         if (!ParseSettings.AllowGen1Tradeback)
             return; // no other groups were iterated, so no need to discard
 
-        EvolutionUtil.Discard(result, PersonalTable.C);
+        if (enc.Generation == 1)
+            EvolutionUtil.Discard(result, PersonalTable.RB);
+        else
+            EvolutionUtil.Discard(result, PersonalTable.C);
     }
 
     public int Devolve(Span<EvoCriteria> result, PKM pk, EvolutionOrigin enc)

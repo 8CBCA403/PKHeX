@@ -38,7 +38,7 @@ public sealed record EncounterEgg(ushort Species, byte Form, byte Level, int Gen
         pk.Language = lang;
         pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, gen);
         pk.CurrentLevel = Level;
-        pk.Version = (int)version;
+        pk.Version = (byte)version;
 
         var ball = FixedBall;
         pk.Ball = ball is Ball.None ? (int)Ball.Poke : (int)ball;
@@ -120,8 +120,8 @@ public sealed record EncounterEgg(ushort Species, byte Form, byte Level, int Gen
         if (pk.Format <= 2)
             return;
 
-        int gender = criteria.GetGender(-1, pk.PersonalInfo);
-        int nature = (int)criteria.GetNature(Nature.Random);
+        int gender = criteria.GetGender(pk.PersonalInfo);
+        int nature = (int)criteria.GetNature();
 
         if (pk.Format <= 5)
         {

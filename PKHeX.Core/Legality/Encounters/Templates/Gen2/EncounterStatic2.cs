@@ -16,12 +16,12 @@ public sealed record EncounterStatic2(ushort Species, byte Level, GameVersion Ve
     int ILocation.Location => Location;
     public int EggLocation => 0;
     public bool IsShiny => Shiny == Shiny.Always;
-    public AbilityPermission Ability => AbilityPermission.OnlyHidden;
+    public AbilityPermission Ability => Species != (int)Core.Species.Koffing ? AbilityPermission.OnlyHidden : AbilityPermission.OnlyFirst;
     public bool Roaming => Species is (int)Core.Species.Entei or (int)Core.Species.Raikou or (int)Core.Species.Suicune && Location != 23;
 
     public Shiny Shiny { get; init; } = Shiny.Random;
     public byte Location { get; init; }
-    public sbyte Gender { get; init; } = -1;
+    public byte Gender { get; init; } = FixedGenderUtil.GenderRandom;
     public IndividualValueSet IVs { get; init; }
     public Moveset Moves { get; init; }
     public bool EggEncounter { get; init; }
@@ -131,7 +131,7 @@ public sealed record EncounterStatic2(ushort Species, byte Level, GameVersion Ve
             }
             else
             {
-                if (Gender != -1 && pk.Gender != Gender)
+                if (Gender != FixedGenderUtil.GenderRandom && pk.Gender != Gender)
                     return false;
             }
         }

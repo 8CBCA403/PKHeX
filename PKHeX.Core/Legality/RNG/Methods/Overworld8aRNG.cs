@@ -155,10 +155,10 @@ public static class Overworld8aRNG
         for (int i = 0; i < ivs.Length; i++)
         {
             if (ivs[i] == UNSET)
-                ivs[i] = (int)rand.NextInt(32);
+                ivs[i] = (int)rand.NextInt(MAX + 1);
         }
 
-        if (!criteria.IsIVsCompatible(ivs, 8))
+        if (!criteria.IsIVsCompatibleSpeedLast(ivs, 8))
             return false;
 
         pk.IV_HP = ivs[0];
@@ -177,7 +177,7 @@ public static class Overworld8aRNG
             PersonalInfo.RatioMagicMale => 0,
             _ => (int)rand.NextInt(252) + 1 < para.GenderRatio ? 1 : 0,
         };
-        if (gender != criteria.Gender && criteria.Gender != -1)
+        if (gender != criteria.Gender && criteria.Gender != FixedGenderUtil.GenderRandom)
             return false;
         pk.Gender = gender;
 

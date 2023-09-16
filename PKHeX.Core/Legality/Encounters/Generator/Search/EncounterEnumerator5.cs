@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace PKHeX.Core;
 
+/// <summary>
+/// Iterates to find potentially matched encounters for <see cref="GameVersion.Gen5"/>.
+/// </summary>
 public record struct EncounterEnumerator5(PKM Entity, EvoCriteria[] Chain, GameVersion Version) : IEnumerator<MatchedEncounter<IEncounterable>>
 {
     private IEncounterable? Deferred;
@@ -95,10 +98,13 @@ public record struct EncounterEnumerator5(PKM Entity, EvoCriteria[] Chain, GameV
                 State = YieldState.BredSplit;
                 return SetCurrent(egg);
             case YieldState.BredSplit:
-                State = Entity.Egg_Location == Locations.Daycare5 ? YieldState.End : YieldState.StartCaptures;
-                if (!EncounterGenerator5.TryGetSplit((EncounterEgg)Current.Encounter, Chain, out egg))
-                    return MoveNext();
-                return SetCurrent(egg);
+                bool daycare = Entity.Egg_Location == Locations.Daycare5;
+                State = daycare ? YieldState.End : YieldState.StartCaptures;
+                if (EncounterGenerator5.TryGetSplit((EncounterEgg)Current.Encounter, Chain, out egg))
+                    return SetCurrent(egg);
+                if (daycare)
+                    break; // no other encounters
+                goto case YieldState.StartCaptures;
 
             case YieldState.TradeStart:
                 if (Version == GameVersion.W)

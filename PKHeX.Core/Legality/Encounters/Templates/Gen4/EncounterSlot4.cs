@@ -78,8 +78,8 @@ public sealed record EncounterSlot4(EncounterArea4 Parent, ushort Species, byte 
 
     private void SetPINGA(PK4 pk, EncounterCriteria criteria, PersonalInfo4 pi)
     {
-        int gender = criteria.GetGender(-1, pi);
-        int nature = (int)criteria.GetNature(Nature.Random);
+        int gender = criteria.GetGender(pi);
+        int nature = (int)criteria.GetNature();
         var ability = criteria.GetAbilityFromNumber(Ability);
         int ctr = 0;
         do
@@ -122,10 +122,17 @@ public sealed record EncounterSlot4(EncounterArea4 Parent, ushort Species, byte 
 
         // A/B/C tables, only Munchlax is a 'C' encounter, and A/B are accessible from any tree.
         // C table encounters are only available from 4 trees, which are determined by TID16/SID16 of the save file.
-        if (Type is SlotType.HoneyTree && Species == (int)Core.Species.Munchlax && !Parent.IsMunchlaxTree(pk))
+        if (IsInvalidMunchlaxTree(pk))
             return false;
 
         return true;
+    }
+
+    public bool IsInvalidMunchlaxTree(PKM pk)
+    {
+        if (Type is not SlotType.HoneyTree)
+            return false;
+        return Species == (int)Core.Species.Munchlax && !Parent.IsMunchlaxTree(pk);
     }
 
     public EncounterMatchRating GetMatchRating(PKM pk)

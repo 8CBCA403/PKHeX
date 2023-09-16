@@ -76,7 +76,7 @@ public sealed record EncounterTrade3XD : IEncounterable, IEncounterMatch, IEncou
             OT_Gender = 0,
             TID16 = TID16,
             SID16 = tr.SID16,
-            Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
+            Nickname = IsFixedNickname ? GetNickname(lang) : SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
         };
 
         SetPINGA(pk, criteria, pi);
@@ -93,8 +93,8 @@ public sealed record EncounterTrade3XD : IEncounterable, IEncounterMatch, IEncou
 
     private void SetPINGA(XK3 pk, EncounterCriteria criteria, PersonalInfo3 pi)
     {
-        int gender = criteria.GetGender(-1, pi);
-        int nature = (int)criteria.GetNature(Nature.Random);
+        int gender = criteria.GetGender(pi);
+        int nature = (int)criteria.GetNature();
         var ability = criteria.GetAbilityFromNumber(Ability);
         if (Species == (int)Core.Species.Unown)
         {

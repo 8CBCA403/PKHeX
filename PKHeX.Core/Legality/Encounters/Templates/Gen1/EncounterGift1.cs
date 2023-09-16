@@ -58,7 +58,7 @@ public sealed record EncounterGift1(ushort Species, byte Level, GameVersion Vers
             Species = Species,
             CurrentLevel = LevelMin,
             Catch_Rate = GetInitialCatchRate(),
-            DV16 = EncounterUtil1.GetRandomDVs(Util.Rand),
+            DV16 = IVs.IsSpecified ? EncounterUtil1.GetDV16(IVs) : EncounterUtil1.GetRandomDVs(Util.Rand),
 
             OT_Name = EncounterUtil1.GetTrainerName(tr, lang),
             TID16 = tr.TID16,
@@ -83,7 +83,10 @@ public sealed record EncounterGift1(ushort Species, byte Level, GameVersion Vers
                 pk.Catch_Rate = Util.Rand.Next(2) == 0 ? (byte)167 : (byte)168;
         }
 
-        EncounterUtil1.SetEncounterMoves(pk, Version, LevelMin);
+        if (Moves.HasMoves)
+            pk.SetMoves(Moves);
+        else
+            EncounterUtil1.SetEncounterMoves(pk, Version, LevelMin);
 
         pk.ResetPartyStats();
         return pk;
@@ -134,6 +137,18 @@ public sealed record EncounterGift1(ushort Species, byte Level, GameVersion Vers
             return false;
         if (Form != evo.Form && !FormInfo.IsFormChangeable(Species, Form, pk.Form, Context, pk.Context))
             return false;
+        if (IVs.IsSpecified)
+        {
+            if (Shiny == Shiny.Always && !pk.IsShiny)
+                return false;
+            if (Shiny == Shiny.Never && pk.IsShiny)
+                return false;
+            if (pk.Format <= 2)
+            {
+                if (!Legal.GetIsFixedIVSequenceValidNoRand(IVs, pk))
+                    return false;
+            }
+        }
 
         // EC/PID check doesn't exist for these, so check Shiny state here.
         if (!IsShinyValid(pk))

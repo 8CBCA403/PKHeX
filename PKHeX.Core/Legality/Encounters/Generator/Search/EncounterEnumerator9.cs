@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace PKHeX.Core;
 
+/// <summary>
+/// Iterates to find potentially matched encounters for <see cref="GameVersion.SV"/>.
+/// </summary>
 public record struct EncounterEnumerator9(PKM Entity, EvoCriteria[] Chain, GameVersion Version) : IEnumerator<MatchedEncounter<IEncounterable>>
 {
     private IEncounterable? Deferred;
@@ -74,7 +77,7 @@ public record struct EncounterEnumerator9(PKM Entity, EvoCriteria[] Chain, GameV
 
             case YieldState.Bred:
                 State = YieldState.TradeStart;
-                if (EncounterGenerator9.TryGetEgg(Entity, Chain, Version, out var egg))
+                if (Locations.IsEggLocationBred9(Entity.Egg_Location) && EncounterGenerator9.TryGetEgg(Entity, Chain, Version, out var egg))
                     return SetCurrent(egg);
                 goto case YieldState.TradeStart;
 

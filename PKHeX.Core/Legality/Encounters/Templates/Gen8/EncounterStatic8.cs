@@ -7,7 +7,7 @@ namespace PKHeX.Core;
 /// </summary>
 public sealed record EncounterStatic8(GameVersion Version = GameVersion.SWSH)
     : IEncounterable, IEncounterMatch, IEncounterConvertible<PK8>, IMoveset, IRelearn,
-        IFlawlessIVCount, IFixedGender, IDynamaxLevelReadOnly, IGigantamaxReadOnly, IOverworldCorrelation8, IFatefulEncounterReadOnly
+        IFlawlessIVCount, IFixedGender, IFixedNature, IDynamaxLevelReadOnly, IGigantamaxReadOnly, IOverworldCorrelation8, IFatefulEncounterReadOnly
 {
     public int Generation => 8;
     public EntityContext Context => EntityContext.Gen8;
@@ -30,7 +30,7 @@ public sealed record EncounterStatic8(GameVersion Version = GameVersion.SWSH)
     public Nature Nature { get; init; }
     public Shiny Shiny { get; init; }
     public AbilityPermission Ability { get; init; }
-    public sbyte Gender { get; init; } = -1;
+    public byte Gender { get; init; } = FixedGenderUtil.GenderRandom;
     public Ball FixedBall { get; init; }
     public byte FlawlessIVCount { get; init; }
     public bool ScriptedNoMarks { get; init; }
@@ -102,7 +102,10 @@ public sealed record EncounterStatic8(GameVersion Version = GameVersion.SWSH)
 
         SetPINGA(pk, criteria);
 
-        EncounterUtil1.SetEncounterMoves(pk, version, Level);
+        if (Moves.HasMoves)
+            pk.SetMoves(Moves);
+        else
+            EncounterUtil1.SetEncounterMoves(pk, version, Level);
         pk.ResetPartyStats();
 
         return pk;
@@ -115,8 +118,8 @@ public sealed record EncounterStatic8(GameVersion Version = GameVersion.SWSH)
 
         var pi = PersonalTable.SWSH[Species, Form];
         pk.RefreshAbility(criteria.GetAbilityFromNumber(Ability));
-        pk.Nature = pk.StatNature = (int)criteria.GetNature(Nature.Random);
-        pk.Gender = criteria.GetGender(-1, pi);
+        pk.Nature = pk.StatNature = (int)criteria.GetNature();
+        pk.Gender = criteria.GetGender(pi);
 
         var req = GetRequirement(pk);
         if (req != MustHave)
@@ -124,7 +127,10 @@ public sealed record EncounterStatic8(GameVersion Version = GameVersion.SWSH)
             var rand = Util.Rand;
             pk.EncryptionConstant = rand.Rand32();
             pk.PID = rand.Rand32();
-            criteria.SetRandomIVs(pk);
+            if (IVs.IsSpecified)
+                criteria.SetRandomIVs(pk, IVs);
+            else
+                criteria.SetRandomIVs(pk, FlawlessIVCount);
             return;
         }
         var shiny = Shiny == Shiny.Random ? Shiny.FixedValue : Shiny;
@@ -147,7 +153,7 @@ public sealed record EncounterStatic8(GameVersion Version = GameVersion.SWSH)
             return false;
         if (pk.Met_Level < EncounterArea8.BoostLevel && Weather is AreaWeather8.Heavy_Fog && EncounterArea8.IsBoostedArea60Fog(Location))
             return false;
-        if (Gender != -1 && pk.Gender != Gender)
+        if (Gender != FixedGenderUtil.GenderRandom && pk.Gender != Gender)
             return false;
         if (Form != evo.Form && !FormInfo.IsFormChangeable(Species, Form, pk.Form, Context, pk.Context))
             return false;

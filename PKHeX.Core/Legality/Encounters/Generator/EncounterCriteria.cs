@@ -6,7 +6,7 @@ namespace PKHeX.Core;
 /// <summary>
 /// Object that can be fed to a <see cref="IEncounterConvertible"/> converter to ensure that the resulting <see cref="PKM"/> meets rough specifications.
 /// </summary>
-public sealed record EncounterCriteria
+public sealed record EncounterCriteria : IFixedNature, IFixedGender, IFixedAbilityNumber, IShinyPotential
 {
     /// <summary>
     /// Default criteria with no restrictions (random) for all fields.
@@ -15,11 +15,11 @@ public sealed record EncounterCriteria
 
     /// <summary> End result's gender. </summary>
     /// <remarks> Leave as -1 to not restrict gender. </remarks>
-    public int Gender { get; init; } = -1;
+    public byte Gender { get; init; } = FixedGenderUtil.GenderRandom;
 
     /// <summary> End result's ability numbers permitted. </summary>
     /// <remarks> Leave as <see cref="Any12H"/> to not restrict ability. </remarks>
-    public AbilityPermission AbilityNumber { get; init; } = Any12H;
+    public AbilityPermission Ability { get; init; } = Any12H;
 
     /// <summary> End result's nature. </summary>
     /// <remarks> Leave as <see cref="Nature.Random"/> to not restrict nature. </remarks>
@@ -51,18 +51,20 @@ public sealed record EncounterCriteria
     /// <summary>
     /// Checks if the IVs are compatible with the encounter's defined IV restrictions.
     /// </summary>
-    /// <param name="encounterIVs">Encounter template's IV restrictions. Speed is not last.</param>
+    /// <param name="encounterIVs">Encounter template's IV restrictions. Speed is last!</param>
     /// <param name="generation">Destination generation</param>
     /// <returns>True if compatible, false if incompatible.</returns>
-    public bool IsIVsCompatible(Span<int> encounterIVs, int generation)
+    public bool IsIVsCompatibleSpeedLast(Span<int> encounterIVs, int generation)
     {
         var IVs = encounterIVs;
         if (!ivCanMatch(IV_HP , IVs[0])) return false;
         if (!ivCanMatch(IV_ATK, IVs[1])) return false;
         if (!ivCanMatch(IV_DEF, IVs[2])) return false;
-        if (!ivCanMatch(IV_SPE, IVs[3])) return false;
-        if (!ivCanMatch(IV_SPA, IVs[4])) return false;
-        if (!ivCanMatch(IV_SPD, IVs[5])) return false;
+        if (!ivCanMatch(IV_SPA, IVs[3])) return false;
+        if (!ivCanMatch(IV_SPD, IVs[4])) return false;
+        if (!ivCanMatch(IV_SPE, IVs[5])) return false;
+
+        return true;
 
         bool ivCanMatch(int requestedIV, int encounterIV)
         {
@@ -70,8 +72,6 @@ public sealed record EncounterCriteria
                 return true;
             return encounterIV == RandomIV || requestedIV == RandomIV || requestedIV == encounterIV;
         }
-
-        return true;
     }
 
     /// <inheritdoc cref="GetCriteria(IBattleTemplate, IPersonalInfo)"/>
@@ -91,7 +91,7 @@ public sealed record EncounterCriteria
     /// <returns>Initialized criteria data to be passed to generators.</returns>
     public static EncounterCriteria GetCriteria(IBattleTemplate s, IPersonalInfo pi) => new()
     {
-        Gender = s.Gender,
+        Gender = (byte)s.Gender,
         IV_HP = s.IVs[0],
         IV_ATK = s.IVs[1],
         IV_DEF = s.IVs[2],
@@ -100,13 +100,13 @@ public sealed record EncounterCriteria
         IV_SPD = s.IVs[5],
         HPType = s.HiddenPowerType,
 
-        AbilityNumber = GetAbilityNumber(s.Ability, pi),
+        Ability = GetAbilityPermissions(s.Ability, pi),
         Nature = NatureUtil.GetNature(s.Nature),
         Shiny = s.Shiny ? Shiny.Always : Shiny.Never,
         TeraType = (sbyte)s.TeraType,
     };
 
-    private static AbilityPermission GetAbilityNumber(int ability, IPersonalAbility pi)
+    private static AbilityPermission GetAbilityPermissions(int ability, IPersonalAbility pi)
     {
         var count = pi.AbilityCount;
         if (count < 2 || pi is not IPersonalAbility12 a)
@@ -127,24 +127,40 @@ public sealed record EncounterCriteria
     }
 
     /// <summary>
-    /// Gets a random nature to generate, based off an encounter's <see cref="encValue"/>.
+    /// Gets the nature to generate, random if unspecified by the template or criteria.
     /// </summary>
     public Nature GetNature(Nature encValue)
     {
         if ((uint)encValue < 25)
             return encValue;
+        return GetNature();
+    }
+
+    /// <summary>
+    /// Gets the nature to generate, random if unspecified.
+    /// </summary>
+    public Nature GetNature()
+    {
         if (Nature != Nature.Random)
             return Nature;
         return (Nature)Util.Rand.Next(25);
     }
 
     /// <summary>
-    /// Gets a random gender to generate, based off an encounter's <see cref="gender"/>.
+    /// Gets the gender to generate, random if unspecified by the template or criteria.
     /// </summary>
     public int GetGender(int gender, IGenderDetail pkPersonalInfo)
     {
         if ((uint)gender < 3)
             return gender;
+        return GetGender(pkPersonalInfo);
+    }
+
+    /// <summary>
+    /// Gets the gender to generate, random if unspecified.
+    /// </summary>
+    public int GetGender(IGenderDetail pkPersonalInfo)
+    {
         if (!pkPersonalInfo.IsDualGender)
             return pkPersonalInfo.FixedGender();
         if (pkPersonalInfo.Genderless)
@@ -166,7 +182,7 @@ public sealed record EncounterCriteria
         return GetAbilityIndexPreference(canBeHidden);
     }
 
-    private int GetAbilityIndexPreference(bool canBeHidden = false) => AbilityNumber switch
+    private int GetAbilityIndexPreference(bool canBeHidden = false) => Ability switch
     {
         OnlyFirst => 0,
         OnlySecond => 1,

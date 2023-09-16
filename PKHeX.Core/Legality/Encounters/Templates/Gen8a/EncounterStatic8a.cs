@@ -23,7 +23,7 @@ public sealed record EncounterStatic8a
     public byte WeightScalar { get; }
     public byte LevelMin { get; }
     public byte LevelMax { get; init; }
-    public sbyte Gender { get; init; } = -1;
+    public byte Gender { get; init; } = FixedGenderUtil.GenderRandom;
     public required byte Location { get; init; }
     public byte FlawlessIVCount { get; init; }
     public Shiny Shiny { get; init; } = Shiny.Never;
@@ -69,7 +69,13 @@ public sealed record EncounterStatic8a
             FatefulEncounter = FatefulEncounter,
             Met_Location = Location,
             Met_Level = LevelMin,
-            Version = (int)Version,
+            MetDate = EncounterDate.GetDateSwitch(),
+            Version = (byte)Version,
+
+            OT_Name = tr.OT,
+            OT_Gender = tr.Gender,
+            ID32 = tr.ID32,
+
             IsAlpha = IsAlpha,
             Ball = (byte)(FixedBall == Ball.None ? Ball.LAPoke : FixedBall),
             Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
@@ -161,7 +167,7 @@ public sealed record EncounterStatic8a
     {
         if (!this.IsLevelWithinRange(pk.Met_Level))
             return false;
-        if (Gender != -1 && pk.Gender != Gender)
+        if (Gender != FixedGenderUtil.GenderRandom && pk.Gender != Gender)
             return false;
         if (pk is IAlpha a && a.IsAlpha != IsAlpha)
             return false;

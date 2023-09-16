@@ -6,7 +6,7 @@ namespace PKHeX.Core;
 /// Generation 9 Trade Encounter
 /// </summary>
 public sealed record EncounterTrade9
-    : IEncounterable, IEncounterMatch, IFixedTrainer, IFixedNickname, IEncounterConvertible<PK9>, IGemType
+    : IEncounterable, IEncounterMatch, IFixedTrainer, IFixedNickname, IEncounterConvertible<PK9>, IGemType, IFixedGender, IFixedNature
 {
     public int Generation => 9;
     public EntityContext Context => EntityContext.Gen9;
@@ -102,6 +102,8 @@ public sealed record EncounterTrade9
 
         EncounterUtil1.SetEncounterMoves(pk, version, Level);
         SetPINGA(pk, criteria, pi);
+        if (EvolveOnTrade)
+            pk.Species++;
 
         pk.ResetPartyStats();
 
@@ -112,8 +114,8 @@ public sealed record EncounterTrade9
     {
         pk.PID = Util.Rand32();
         pk.EncryptionConstant = Util.Rand32();
-        pk.Nature = pk.StatNature = (int)criteria.GetNature(Nature.Random);
-        pk.Gender = criteria.GetGender(-1, pi);
+        pk.Nature = pk.StatNature = (int)criteria.GetNature(Nature);
+        pk.Gender = criteria.GetGender(Gender, pi);
         pk.RefreshAbility(criteria.GetAbilityFromNumber(Ability));
         criteria.SetRandomIVs(pk, IVs);
     }

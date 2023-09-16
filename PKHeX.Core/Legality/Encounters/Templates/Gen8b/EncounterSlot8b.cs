@@ -75,7 +75,7 @@ public sealed record EncounterSlot8b(EncounterArea8b Parent, ushort Species, byt
             Met_Level = LevelMin,
             Version = (byte)Version,
             MetDate = EncounterDate.GetDateSwitch(),
-            Ball = (byte)Ball.Poke,
+            Ball = (byte)GetRequiredBall(),
 
             Language = lang,
             OT_Name = tr.OT,
@@ -97,8 +97,8 @@ public sealed record EncounterSlot8b(EncounterArea8b Parent, ushort Species, byt
         pk.PID = Util.Rand32();
         pk.EncryptionConstant = Util.Rand32();
         criteria.SetRandomIVs(pk);
-        pk.Nature = pk.StatNature = (int)criteria.GetNature(Nature.Random);
-        pk.Gender = criteria.GetGender(-1, pi);
+        pk.Nature = pk.StatNature = (int)criteria.GetNature();
+        pk.Gender = criteria.GetGender(pi);
         pk.RefreshAbility(criteria.GetAbilityFromNumber(Ability));
     }
 
@@ -137,10 +137,17 @@ public sealed record EncounterSlot8b(EncounterArea8b Parent, ushort Species, byt
 
         // A/B/C tables, only Munchlax is a 'C' encounter, and A/B are accessible from any tree.
         // C table encounters are only available from 4 trees, which are determined by TID16/SID16 of the save file.
-        if (Type is SlotType.HoneyTree && Species == (int)Core.Species.Munchlax && !Parent.IsMunchlaxTree(pk))
+        if (IsInvalidMunchlaxTree(pk))
             return false;
 
         return true;
+    }
+
+    public bool IsInvalidMunchlaxTree(PKM pk)
+    {
+        if (Type is not SlotType.HoneyTree)
+            return false;
+        return Species == (int)Core.Species.Munchlax && !Parent.IsMunchlaxTree(pk);
     }
 
     public EncounterMatchRating GetMatchRating(PKM pk)
@@ -175,5 +182,4 @@ public sealed record EncounterSlot8b(EncounterArea8b Parent, ushort Species, byt
         return baseEgg.Contains(move);
     }
     #endregion
-
 }

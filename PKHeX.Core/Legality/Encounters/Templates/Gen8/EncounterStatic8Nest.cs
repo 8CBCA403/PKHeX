@@ -30,7 +30,7 @@ public abstract record EncounterStatic8Nest<T>(GameVersion Version)
     public byte DynamaxLevel { get; init; }
     public Shiny Shiny { get; init; }
     public AbilityPermission Ability { get; init; }
-    public sbyte Gender { get; init; } = -1;
+    public byte Gender { get; init; } = FixedGenderUtil.GenderRandom;
     public byte FlawlessIVCount { get; init; }
     public bool CanGigantamax { get; init; }
 
@@ -78,7 +78,10 @@ public abstract record EncounterStatic8Nest<T>(GameVersion Version)
 
         SetPINGA(pk, criteria, pi);
 
-        EncounterUtil1.SetEncounterMoves(pk, version, Level);
+        if (Moves.HasMoves)
+            pk.SetMoves(Moves);
+        else
+            EncounterUtil1.SetEncounterMoves(pk, version, Level);
         pk.ResetPartyStats();
 
         return pk;
@@ -90,30 +93,34 @@ public abstract record EncounterStatic8Nest<T>(GameVersion Version)
     {
         bool requestShiny = criteria.Shiny.IsShiny();
         bool checkShiny = requestShiny && Shiny != Shiny.Never;
-        var ratio = RemapGenderToParam(Gender, pi);
-        var abil = RemapAbilityToParam(Ability);
         Span<int> iv = stackalloc int[6];
 
         int ctr = 0;
         var rand = new Xoroshiro128Plus(Util.Rand.Rand64());
+        var param = GetParam(pi);
         ulong seed;
+        const int max = 100_000;
         do
         {
-            seed = rand.Next();
-            ApplyDetailsTo(pk, seed, iv, abil, ratio);
-
-            if (criteria.IV_ATK != 31 && pk.IV_ATK != criteria.IV_ATK)
-                continue;
-            if (criteria.IV_SPE != 31 && pk.IV_SPE != criteria.IV_SPE)
+            if (!TryApply(pk, seed = rand.Next(), iv, param, criteria))
                 continue;
             if (checkShiny && pk.IsShiny != requestShiny)
                 continue;
             break;
-        } while (ctr++ < 100_000);
+        } while (++ctr < max);
+
+        if (ctr == max) // fail
+            while (!TryApply(pk, seed = rand.Next(), iv, param, EncounterCriteria.Unrestricted)) { }
 
         FinishCorrelation(pk, seed);
         if ((byte)criteria.Nature != pk.Nature && criteria.Nature.IsMint())
             pk.StatNature = (byte)criteria.Nature;
+    }
+
+    private GenerateParam8 GetParam(PersonalInfo8SWSH pi)
+    {
+        var ratio = RemapGenderToParam(Gender, pi);
+        return new GenerateParam8(Species, ratio, FlawlessIVCount, Ability, Shiny, Nature.Random, IVs);
     }
 
     protected virtual void FinishCorrelation(PK8 pk, ulong seed) { }
@@ -165,7 +172,7 @@ public abstract record EncounterStatic8Nest<T>(GameVersion Version)
     }
 
     protected virtual bool IsMatchLevel(PKM pk) => pk.Met_Level == Level;
-    private bool IsMatchGender(PKM pk) => Gender == -1 || Gender == pk.Gender;
+    private bool IsMatchGender(PKM pk) => Gender == FixedGenderUtil.GenderRandom || Gender == pk.Gender;
     private bool IsMatchForm(PKM pk, EvoCriteria evo) => Form == evo.Form || FormInfo.IsFormChangeable(Species, Form, pk.Form, Context, pk.Context);
     private bool IsMatchIVs(PKM pk)
     {
@@ -239,43 +246,22 @@ public abstract record EncounterStatic8Nest<T>(GameVersion Version)
     /// <returns>True if the seed is valid for the criteria.</returns>
     public bool Verify(PKM pk, ulong seed, bool forceNoShiny = false)
     {
-        var ratio = RemapGenderToParam(Gender, Info);
-        var abil = RemapAbilityToParam(Ability);
-
+        var param = GetParam(PersonalTable.SWSH.GetFormEntry(Species, Form));
         Span<int> iv = stackalloc int[6];
-        LoadIVs(iv);
-        return RaidRNG.Verify(pk, seed, iv, Species, FlawlessIVCount, abil, ratio, forceNoShiny: forceNoShiny);
+        return RaidRNG.Verify(pk, seed, iv, param, forceNoShiny: forceNoShiny);
     }
 
-    private void ApplyDetailsTo(PK8 pk, ulong seed, Span<int> iv, byte abil, byte ratio)
+    protected virtual bool TryApply(PK8 pk, ulong seed, Span<int> iv, GenerateParam8 param, EncounterCriteria criteria)
     {
-        LoadIVs(iv);
-        RaidRNG.ApplyDetailsTo(pk, seed, iv, Species, FlawlessIVCount, abil, ratio);
+        return RaidRNG.TryApply(pk, seed, iv, param, criteria);
     }
 
-    private void LoadIVs(Span<int> span)
-    {
-        // Template stores with speed in middle (standard), convert for generator purpose.
-        var ivs = IVs;
-        if (ivs.IsSpecified)
-            ivs.CopyToSpeedLast(span);
-        else
-            span.Fill(-1);
-    }
-
-    private static byte RemapGenderToParam(sbyte gender, PersonalInfo8SWSH pi) => gender switch
+    private static byte RemapGenderToParam(byte gender, PersonalInfo8SWSH pi) => gender switch
     {
         0 => PersonalInfo.RatioMagicMale,
         1 => PersonalInfo.RatioMagicFemale,
         2 => PersonalInfo.RatioMagicGenderless,
         _ => pi.Gender,
-    };
-
-    private static byte RemapAbilityToParam(AbilityPermission a) => a switch
-    {
-        Any12H => 254,
-        Any12 => 255,
-        _ => a.GetSingleValue(),
     };
 
     private bool IsMatchCorrelation(PKM pk)

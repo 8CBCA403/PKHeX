@@ -197,17 +197,18 @@ public static class PIDGenerator
         // 1 3-bit for upper
         // 1 3-bit for lower
 
-        uint Next() => (seed = LCRNG.Next(seed)) >> 16;
-        uint lower = Next() & 7;
-        uint upper = Next() & 7;
+        uint lower = Next(ref seed) & 7;
+        uint upper = Next(ref seed) & 7;
         for (int i = 0; i < 13; i++)
-            lower |= (Next() & 1) << (3 + i);
+            lower |= (Next(ref seed) & 1) << (3 + i);
 
         upper = ((lower ^ pk.TID16 ^ pk.SID16) & 0xFFF8) | (upper & 0x7);
         pk.PID = (upper << 16) | lower;
         Span<int> IVs = stackalloc int[6];
-        MethodFinder.GetIVsInt32(IVs, Next(), Next());
+        MethodFinder.GetIVsInt32(IVs, Next(ref seed), Next(ref seed));
         pk.SetIVs(IVs);
+
+        static uint Next(ref uint seed) => (seed = LCRNG.Next(seed)) >> 16;
     }
 
     private static void SetRandomPokeSpotPID(PKM pk, uint seed)
@@ -291,8 +292,7 @@ public static class PIDGenerator
         // Pokewalker PIDs cannot yield multiple abilities from the input nature-gender-trainerID. Disregard any ability request.
         var pi = pk.PersonalInfo.Gender;
         pk.Gender = gender;
-        do pk.PID = GetPokeWalkerPID(pk.TID16, pk.SID16, (uint)nature, gender, pi);
-        while (!pk.IsGenderValid());
+        pk.PID = GetPokeWalkerPID(pk.TID16, pk.SID16, (uint)nature, gender, pi);
         pk.RefreshAbility((int) (pk.PID & 1));
     }
 

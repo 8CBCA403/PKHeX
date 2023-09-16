@@ -1210,7 +1210,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         {
             CheckMetLocationChange(version, Entity.Context);
             if (FieldsLoaded)
-                Entity.Version = (int)version;
+                Entity.Version = (byte)version;
         }
 
         // Visibility logic for Gen 4 ground tile; only show for Gen 4 Pokemon.
@@ -1751,12 +1751,10 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
 
     private void ValidateMovePaint(object? sender, DrawItemEventArgs e)
     {
-        if (sender is null || e.Index < 0)
+        if (sender is not ComboBox cb || e.Index < 0 || cb.Items[e.Index] is not ComboItem item)
             return;
 
-        var cb = (ComboBox)sender;
-        var item = cb.Items[e.Index];
-        var (text, value) = (ComboItem)item;
+        var (text, value) = item;
         var valid = LegalMoveSource.Info.CanLearn((ushort)value) && !HaX;
 
         var current = (e.State & DrawItemState.Selected) != 0;

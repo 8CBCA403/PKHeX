@@ -20,14 +20,14 @@ public sealed record EncounterFixed9
     public Ball FixedBall => Ball.None;
     public bool IsShiny => false;
     public int EggLocation => 0;
-    public AbilityPermission Ability => AbilityPermission.Any12;
+    public AbilityPermission Ability => Any12;
 
     public required ushort Species { get; init; }
     public required byte Form { get; init; }
     public required byte Level { get; init; }
     public required byte FlawlessIVCount { get; init; }
     public required GemType TeraType { get; init; }
-    public required sbyte Gender { get; init; }
+    public required byte Gender { get; init; }
     public required Moveset Moves { get; init; }
     private byte Location0 { get; init; }
     private byte Location1 { get; init; }
@@ -53,7 +53,7 @@ public sealed record EncounterFixed9
         Level = data[0x03],
         FlawlessIVCount = data[0x04],
         TeraType = (GemType)data[0x05],
-        Gender = (sbyte)data[0x06],
+        Gender = data[0x06],
         // 1 byte reserved
         Moves = new Moveset(
             ReadUInt16LittleEndian(data[0x08..]),
@@ -89,7 +89,8 @@ public sealed record EncounterFixed9
             OT_Friendship = pi.BaseFriendship,
             Met_Location = Location,
             Met_Level = LevelMin,
-            Version = (int)version,
+            MetDate = EncounterDate.GetDateSwitch(),
+            Version = (byte)version,
             Ball = (byte)Ball.Poke,
 
             Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
@@ -122,8 +123,8 @@ public sealed record EncounterFixed9
     {
         pk.PID = Util.Rand32();
         pk.EncryptionConstant = Util.Rand32();
-        pk.Nature = pk.StatNature = (int)criteria.GetNature(Nature.Random);
-        pk.Gender = criteria.GetGender(-1, pi);
+        pk.Nature = pk.StatNature = (int)criteria.GetNature();
+        pk.Gender = criteria.GetGender(pi);
         pk.RefreshAbility(criteria.GetAbilityFromNumber(Ability));
 
         criteria.SetRandomIVs(pk, FlawlessIVCount);
@@ -135,7 +136,7 @@ public sealed record EncounterFixed9
     {
         if (!this.IsLevelWithinRange(pk.Met_Level))
             return false;
-        if (Gender != -1 && pk.Gender != Gender)
+        if (Gender != FixedGenderUtil.GenderRandom && pk.Gender != Gender)
             return false;
         if (!IsMatchEggLocation(pk))
             return false;
