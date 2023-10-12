@@ -18,7 +18,7 @@ public sealed class SAV9SV : SaveFile, ISaveBlock9Main, ISCBlockArray, ISaveFile
     {
         AllBlocks = blocks;
         Blocks = new SaveBlockAccessor9SV(this);
-        SaveRevision = GetRevision();
+        SaveRevision = Zukan.GetRevision();
         Initialize();
     }
 
@@ -26,16 +26,9 @@ public sealed class SAV9SV : SaveFile, ISaveBlock9Main, ISCBlockArray, ISaveFile
     {
         AllBlocks = Meta9.GetBlankDataSV();
         Blocks = new SaveBlockAccessor9SV(this);
-        SaveRevision = GetRevision();
+        SaveRevision = Zukan.GetRevision();
         Initialize();
         ClearBoxes();
-    }
-
-    private int GetRevision()
-    {
-        if (!Blocks.HasBlock(0x08E1CF45))
-            return 0;
-        return 1;
     }
 
     public override void CopyChangesFrom(SaveFile sav)
@@ -85,7 +78,8 @@ public sealed class SAV9SV : SaveFile, ISaveBlock9Main, ISCBlockArray, ISaveFile
     public Epoch1970Value LastSaved => Blocks.LastSaved;
     public PlayerFashion9 PlayerFashion => Blocks.PlayerFashion;
     public PlayerAppearance9 PlayerAppearance => Blocks.PlayerAppearance;
-    public RaidSpawnList9 Raid => Blocks.Raid;
+    public RaidSpawnList9 RaidPaldea => Blocks.RaidPaldea;
+    public RaidSpawnList9 RaidKitakami => Blocks.RaidKitakami;
     public RaidSevenStar9 RaidSevenStar => Blocks.RaidSevenStar;
     public Epoch1900Value EnrollmentDate => Blocks.EnrollmentDate;
     #endregion
@@ -148,7 +142,7 @@ public sealed class SAV9SV : SaveFile, ISaveBlock9Main, ISCBlockArray, ISaveFile
     public override Type PKMType => typeof(PK9);
 
     public override int BoxCount => BoxLayout9.BoxCount;
-    public override int MaxEV => 252;
+    public override int MaxEV => EffortValues.Max252;
     public override int Generation => 9;
     public override EntityContext Context => EntityContext.Gen9;
     public override int MaxStringLengthOT => 12;
@@ -349,12 +343,12 @@ public sealed class SAV9SV : SaveFile, ISaveBlock9Main, ISCBlockArray, ISaveFile
 
     public void UnlockAllTMRecipes()
     {
-        for (int i = 1; i <= 201; i++)
+        for (int i = 1; i <= 229; i++)
         {
             var flag = $"FSYS_UI_WAZA_MACHINE_RELEASE_{i:000}";
             var hash = (uint)FnvHash.HashFnv1a_64(flag);
-            var block = Accessor.GetBlock(hash);
-            block.ChangeBooleanType(SCTypeCode.Bool2);
+            if (Accessor.TryGetBlock(hash, out var block))
+                block.ChangeBooleanType(SCTypeCode.Bool2);
         }
     }
 }

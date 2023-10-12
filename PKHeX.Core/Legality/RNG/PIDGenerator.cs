@@ -178,7 +178,11 @@ public static class PIDGenerator
                 return SetValuesFromSeedMG5Shiny;
 
             case PIDType.Pokewalker:
-                return (pk, seed) => pk.PID = GetPokeWalkerPID(pk.TID16, pk.SID16, seed%24, pk.Gender, pk.PersonalInfo.Gender);
+                return (pk, seed) =>
+                {
+                    var pid = pk.PID = PokewalkerRNG.GetPID(pk.TID16, pk.SID16, seed % 24, pk.Gender, pk.PersonalInfo.Gender);
+                    pk.RefreshAbility((int)(pid & 1));
+                };
 
             // others: unimplemented
             case PIDType.CuteCharm:
@@ -193,22 +197,13 @@ public static class PIDGenerator
 
     public static void SetRandomChainShinyPID(PKM pk, uint seed)
     {
-        // 13 rand bits
-        // 1 3-bit for upper
-        // 1 3-bit for lower
+        pk.PID = ClassicEraRNG.GetChainShinyPID(ref seed, pk.ID32);
 
-        uint lower = Next(ref seed) & 7;
-        uint upper = Next(ref seed) & 7;
-        for (int i = 0; i < 13; i++)
-            lower |= (Next(ref seed) & 1) << (3 + i);
-
-        upper = ((lower ^ pk.TID16 ^ pk.SID16) & 0xFFF8) | (upper & 0x7);
-        pk.PID = (upper << 16) | lower;
         Span<int> IVs = stackalloc int[6];
-        MethodFinder.GetIVsInt32(IVs, Next(ref seed), Next(ref seed));
+        var rand1 = LCRNG.Next16(ref seed);
+        var rand2 = LCRNG.Next16(ref seed);
+        MethodFinder.GetIVsInt32(IVs, rand1, rand2);
         pk.SetIVs(IVs);
-
-        static uint Next(ref uint seed) => (seed = LCRNG.Next(seed)) >> 16;
     }
 
     private static void SetRandomPokeSpotPID(PKM pk, uint seed)
@@ -245,55 +240,12 @@ public static class PIDGenerator
         return PID;
     }
 
-    public static uint GetPokeWalkerPID(ushort TID16, ushort SID16, uint nature, int gender, byte gr)
-    {
-        if (nature >= 24)
-            nature = 0;
-        uint pid = ((((uint)TID16 ^ SID16) >> 8) ^ 0xFF) << 24; // the most significant byte of the PID is chosen so the Pokémon can never be shiny.
-        // Ensure nature is set to required nature without affecting shininess
-        pid += nature - (pid % 25);
-
-        if (gr is 0 or >= 0xFE) // non-dual gender
-            return pid;
-
-        // Ensure Gender is set to required gender without affecting other properties
-        // If Gender is modified, modify the ability if appropriate
-
-        // either m/f
-        var pidGender = (pid & 0xFF) < gr ? 1 : 0;
-        if (gender == pidGender)
-            return pid;
-
-        if (gender == 0) // Male
-        {
-            pid += (((gr - (pid & 0xFF)) / 25) + 1) * 25;
-            if ((nature & 1) != (pid & 1))
-                pid += 25;
-        }
-        else
-        {
-            pid -= ((((pid & 0xFF) - gr) / 25) + 1) * 25;
-            if ((nature & 1) != (pid & 1))
-                pid -= 25;
-        }
-        return pid;
-    }
-
     public static void SetValuesFromSeedMG5Shiny(PKM pk, uint seed)
     {
         var gv = seed >> 24;
         var av = seed & 1; // arbitrary choice
         pk.PID = GetMG5ShinyPID(gv, av, pk.TID16, pk.SID16);
         SetRandomIVs(pk);
-    }
-
-    public static void SetRandomPIDPokewalker(PKM pk, int nature, int gender)
-    {
-        // Pokewalker PIDs cannot yield multiple abilities from the input nature-gender-trainerID. Disregard any ability request.
-        var pi = pk.PersonalInfo.Gender;
-        pk.Gender = gender;
-        pk.PID = GetPokeWalkerPID(pk.TID16, pk.SID16, (uint)nature, gender, pi);
-        pk.RefreshAbility((int) (pk.PID & 1));
     }
 
     public static void SetRandomWildPID4(PKM pk, int nature, int ability, int gender, PIDType type)
@@ -312,7 +264,7 @@ public static class PIDGenerator
         }
     }
 
-    private static bool IsValidCriteria4(PKM pk, int nature, int ability, int gender)
+    public static bool IsValidCriteria4(PKM pk, int nature, int ability, int gender)
     {
         if (pk.GetSaneGender() != gender)
             return false;

@@ -29,8 +29,9 @@ public partial class SAV_PokedexSV : Form
         CB_Species.Items.Clear();
 
         // Fill List
+        const int maxSpecies = (int)Species.IronLeaves; // 1010 -- no DLC species
         CB_Species.InitializeBinding();
-        var species = GameInfo.SpeciesDataSource.Where(z => SAV.Personal.IsSpeciesInGame((ushort)z.Value)).ToArray();
+        var species = GameInfo.SpeciesDataSource.Where(z => SAV.Personal.IsSpeciesInGame((ushort)z.Value) && z.Value <= maxSpecies).ToArray();
         CB_Species.DataSource = new BindingSource(species, null);
 
         var list = species
@@ -138,7 +139,7 @@ public partial class SAV_PokedexSV : Form
 
     private void GetEntry(ushort species)
     {
-        var entry = SAV.Zukan.Get(species);
+        var entry = SAV.Zukan.DexPaldea.Get(species);
         var forms = GetFormList(species);
         if (forms[0].Length == 0)
             forms[0] = GameInfo.Strings.Types[0];
@@ -191,7 +192,7 @@ public partial class SAV_PokedexSV : Form
 
     private void SetEntry(ushort species)
     {
-        var entry = SAV.Zukan.Get(species);
+        var entry = SAV.Zukan.DexPaldea.Get(species);
         entry.SetState((uint)CB_State.SelectedIndex);
         entry.SetDisplayIsNew(CHK_IsNew.Checked);
 
