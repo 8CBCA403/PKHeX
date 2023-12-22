@@ -105,6 +105,18 @@ public sealed record EncounterSlot9(EncounterArea9 Parent, ushort Species, byte 
         168 => Standard, // Infernal Pass
         170 => Standard, // Chilling Waterhead
 
+        174 => Standard, // Savanna Biome
+        176 => Standard, // Coastal Biome
+        178 => Standard, // Canyon Biome
+        180 => Snow,     // Polar Biome
+        182 => Standard, // Central Plaza
+        184 => Standard, // Savanna Plaza
+        186 => Standard, // Coastal Plaza
+        188 => Standard, // Canyon Plaza
+        190 => Standard, // Polar Plaza
+        192 => Inside,   // Chargestone Cavern
+        194 => Inside,   // Torchlit Labyrinth
+
         _ => None,
     };
 
@@ -213,6 +225,17 @@ public sealed record EncounterSlot9(EncounterArea9 Parent, ushort Species, byte 
         bool isHidden = pk.AbilityNumber == 4;
         if (isHidden && this.IsPartialMatchHidden(pk.Species, Species))
             return EncounterMatchRating.PartialMatch;
+        if (pk is IRibbonSetMark8 { HasMarkEncounter8: true } m)
+        {
+            if (m.RibbonMarkLunchtime && !CanSpawnAtTime(RibbonIndex.MarkLunchtime))
+                return EncounterMatchRating.DeferredErrors;
+            if (m.RibbonMarkSleepyTime && !CanSpawnAtTime(RibbonIndex.MarkSleepyTime))
+                return EncounterMatchRating.DeferredErrors;
+            if (m.RibbonMarkDusk && !CanSpawnAtTime(RibbonIndex.MarkDusk))
+                return EncounterMatchRating.DeferredErrors;
+            if (m.RibbonMarkDawn && !CanSpawnAtTime(RibbonIndex.MarkDawn))
+                return EncounterMatchRating.DeferredErrors;
+        }
         return EncounterMatchRating.Match;
     }
     #endregion

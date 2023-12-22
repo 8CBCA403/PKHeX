@@ -67,7 +67,7 @@ public static class SpriteUtil
     private static Bitmap GetSprite(PKM pk)
     {
         var formarg = pk is IFormArgument f ? f.FormArgument : 0;
-        var shiny = !pk.IsShiny ? Shiny.Never : (ShinyExtensions.IsSquareShinyExist(pk) ? Shiny.AlwaysSquare : Shiny.AlwaysStar);
+        var shiny = ShinyExtensions.GetType(pk);
 
         var img = GetSprite(pk.Species, pk.Form, pk.Gender, formarg, pk.SpriteItem, pk.IsEgg, shiny, pk.Context);
         if (pk is IShadowCapture {IsShadow: true})
@@ -104,7 +104,8 @@ public static class SpriteUtil
             if (SpriteBuilder.ShowTeraType != SpriteBackgroundType.None && pk is ITeraType t)
             {
                 var type = t.TeraType;
-                sprite = ApplyTeraColor((byte)type, sprite, SpriteBuilder.ShowTeraType);
+                if (TeraTypeUtil.IsOverrideValid((byte)type))
+                    sprite = ApplyTeraColor((byte)type, sprite, SpriteBuilder.ShowTeraType);
             }
             if (flagIllegal)
             {
