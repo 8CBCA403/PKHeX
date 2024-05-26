@@ -137,4 +137,105 @@ public static class StringConverter8
         WriteCharacters(expect, under);
         return relevantSection.SequenceEqual(expect);
     }
+
+    /// <summary>
+    /// Used when importing a 3DS string into HOME.
+    /// </summary>
+    public static void TransferGlyphs78(Span<byte> str)
+    {
+        bool modified = false;
+        var u16 = MemoryMarshal.Cast<byte, char>(str);
+        foreach (ref var c in u16)
+        {
+            var x = c;
+            if (x == TerminatorNull)
+                break;
+            if (!BitConverter.IsLittleEndian)
+                x = (char)ReverseEndianness(x);
+
+            var t = TransferGlyphs78(x);
+            if (t == x)
+                continue;
+
+            if (!BitConverter.IsLittleEndian)
+                t = (char)ReverseEndianness(t);
+            c = t;
+            modified = true;
+        }
+
+        if (modified)
+            TrimHalfSpaces(u16);
+    }
+
+    private static void TrimHalfSpaces(Span<char> u16)
+    {
+        // If a replacement is made, any leading or trailing halfwidth spaces are trimmed.
+        // This allows nicknames/OT names that are the empty string or consist entirely of fullwidth spaces.
+        int length = u16.IndexOf((char)TerminatorNull);
+        if (length == -1)
+            length = u16.Length; // Full buffer (bad input), but still remap.
+
+        var region = u16[..length];
+        char seek = ' ';
+        if (BitConverter.IsLittleEndian)
+            seek = (char)ReverseEndianness(' ');
+
+        var trim = region.Trim(seek);
+        if (region.Length == trim.Length)
+            return;
+
+        trim.CopyTo(u16);
+        u16[trim.Length..].Clear();
+    }
+
+    private static ReadOnlySpan<char> Glyphs78 =>
+    [
+        '　', // '\uE081' -> '\u3000'
+        '　', // '\uE082' -> '\u3000'
+        '　', // '\uE083' -> '\u3000'
+        '　', // '\uE084' -> '\u3000'
+        '　', // '\uE085' -> '\u3000'
+        '　', // '\uE086' -> '\u3000'
+        '　', // '\uE087' -> '\u3000'
+        '', // '\uE088' -> '\uE088'
+        '', // '\uE089' -> '\uE089'
+        '', // '\uE08A' -> '\uE08A'
+        '', // '\uE08B' -> '\uE08B'
+        '', // '\uE08C' -> '\uE08C'
+        '…', // '\uE08D' -> '\u2026'
+        '♂', // '\uE08E' -> '\u2642'
+        '♀', // '\uE08F' -> '\u2640'
+        '♠', // '\uE090' -> '\u2660'
+        '♣', // '\uE091' -> '\u2663'
+        '♥', // '\uE092' -> '\u2665'
+        '♦', // '\uE093' -> '\u2666'
+        '★', // '\uE094' -> '\u2605'
+        '◎', // '\uE095' -> '\u25CE'
+        '○', // '\uE096' -> '\u25CB'
+        '□', // '\uE097' -> '\u25A1'
+        '△', // '\uE098' -> '\u25B3'
+        '◇', // '\uE099' -> '\u25C7'
+        '♪', // '\uE09A' -> '\u266A'
+        '☀', // '\uE09B' -> '\u2600'
+        '☁', // '\uE09C' -> '\u2601'
+        '☂', // '\uE09D' -> '\u2602'
+        '☃', // '\uE09E' -> '\u2603'
+        ' ', // '\uE09F' -> '\u0020'
+        ' ', // '\uE0A0' -> '\u0020'
+        ' ', // '\uE0A1' -> '\u0020'
+        ' ', // '\uE0A2' -> '\u0020'
+        ' ', // '\uE0A3' -> '\u0020'
+        ' ', // '\uE0A4' -> '\u0020'
+        ' ', // '\uE0A5' -> '\u0020'
+    ];
+
+    private const int Glyphs78Start = 0xE081;
+
+    private static char TransferGlyphs78(char chr)
+    {
+        int index = chr - Glyphs78Start;
+        if ((uint)index >= Glyphs78.Length)
+            return chr;
+        return Glyphs78[index];
+    }
 }
