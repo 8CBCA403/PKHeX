@@ -1,4 +1,3 @@
-using PKHeX.Core;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,9 +8,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using PKHeX.Core;
 
 using static PKHeX.Core.MessageStrings;
-using Exception = System.Exception;
 
 namespace PKHeX.WinForms;
 
@@ -28,7 +27,7 @@ public static class WinFormsUtil
             return;
         int x = parent.Location.X + ((parent.Width - child.Width) / 2);
         int y = parent.Location.Y + ((parent.Height - child.Height) / 2);
-        child.Location = new Point(Math.Max(x, 0), Math.Max(y, 0));
+        child.Location = new Point(x, y);
     }
 
     /// <summary>
@@ -41,7 +40,7 @@ public static class WinFormsUtil
             child.SetBounds(midpoint, 0, 0, 0, BoundsSpecified.X);
     }
 
-    public static T? FirstFormOfType<T>() where T : Form => (T?)Application.OpenForms.Cast<Form>().FirstOrDefault(form => form is T);
+    public static T? FirstFormOfType<T>() where T : Form => Application.OpenForms.OfType<T>().FirstOrDefault();
 
     public static T? FindFirstControlOfType<T>(Control aParent) where T : class
     {
@@ -72,7 +71,7 @@ public static class WinFormsUtil
                     sender = s;
                     continue;
                 default:
-                    return default;
+                    return null;
             }
         }
     }
