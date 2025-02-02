@@ -52,7 +52,7 @@ public sealed class GameDataPB7 : HomeOptional1, IGameDataSide<PB7>, IScaledSize
     public byte FieldEventFatigue2 { get => Data[0x28]; set => Data[0x28] = value; }
     public byte Fullness { get => Data[0x29]; set => Data[0x29] = value; }
     public byte Rank { get => Data[0x2A]; set => Data[0x2A] = value; }
-    public int OriginalTrainerAffection { get => Data[0x2B]; set => Data[0x2B] = (byte)value; }
+    public byte OriginalTrainerAffection { get => Data[0x2B]; set => Data[0x2B] = (byte)value; }
     public byte OriginalTrainerMemoryIntensity { get => Data[0x2C]; set => Data[0x2C] = value; }
     public byte OriginalTrainerMemory { get => Data[0x2D]; set => Data[0x2D] = value; }
     public ushort OriginalTrainerMemoryVariable { get => ReadUInt16LittleEndian(Data[0x2E..]); set => WriteUInt16LittleEndian(Data[0x2E..], value); }
@@ -158,7 +158,7 @@ public sealed class GameDataPB7 : HomeOptional1, IGameDataSide<PB7>, IScaledSize
         // There isn't an actual preference since this format cannot naturally backwards transfer.
         // Just pick out the first one.
         var result = CreateInternal(pkh);
-        if (result == null)
+        if (result is null)
             return null;
 
         result.PopulateFromCore(pkh);
@@ -168,7 +168,7 @@ public sealed class GameDataPB7 : HomeOptional1, IGameDataSide<PB7>, IScaledSize
     private static GameDataPB7? CreateInternal(PKH pkh)
     {
         var side = GetNearestNeighbor(pkh);
-        if (side == null)
+        if (side is null)
             return null;
 
         var ball = side.Ball;
