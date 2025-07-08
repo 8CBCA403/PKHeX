@@ -2,13 +2,11 @@ using PKHeX.Core;
 using PKHeX.Drawing;
 using PKHeX.Drawing.Misc;
 using PKHeX.Drawing.PokeSprite;
-using PKHeX.Drawing.PokeSprite.Properties;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows.Forms;
 using static PKHeX.Core.MessageStrings;
@@ -26,12 +24,6 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
     public PKMEditor()
     {
         InitializeComponent();
-
-        // Groupbox doesn't show Click event in Designer...
-        GB_OT.Click += ClickGT;
-        GB_nOT.Click += ClickGT;
-        GB_CurrentMoves.Click += ClickMoves;
-        GB_RelearnMoves.Click += ClickMoves;
 
         var font = FontUtil.GetPKXFont();
         TB_Nickname.Font = TB_OT.Font = TB_HT.Font = font;
@@ -82,6 +74,10 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         // Controls contained in a TabPage are not created until the tab page is shown
         // Any data bindings in these controls are not activated until the tab page is shown.
         FlickerInterface();
+
+        TB_EXP.MouseWheel += WinFormsUtil.MouseWheelIncrement1;
+        TB_Level.MouseWheel += WinFormsUtil.MouseWheelIncrement1;
+        TB_Friendship.MouseWheel += WinFormsUtil.MouseWheelIncrement1;
     }
 
     private sealed class ValidationRequiredSet(Control[] controls, Func<PKM, bool> shouldCheck, Func<Control, bool> isState)
@@ -346,6 +342,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
             LegalityChanged?.Invoke(Legality.Valid, EventArgs.Empty);
             return;
         }
+        PB_WarnRelearn1.Visible = PB_WarnRelearn2.Visible = PB_WarnRelearn3.Visible = PB_WarnRelearn4.Visible = true;
         MC_Move1.HideLegality = MC_Move2.HideLegality = MC_Move3.HideLegality = MC_Move4.HideLegality = false;
 
         // Refresh Move Legality
@@ -358,7 +355,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         {
             var relearn = info.Relearn;
             for (int i = 0; i < 4; i++)
-                relearnPB[i].Visible = !relearn[i].Valid;
+                relearnPB[i].Image = MoveDisplayState.GetMoveImage(!relearn[i].Valid, Entity, i);
         }
 
         if (args.HasFlag(UpdateLegalityArgs.SkipMoveRepopulation))
@@ -409,7 +406,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         if (lang <= 0)
             lang = (int)LanguageID.English;
         CB_Language.SelectedValue = lang;
-        if (tr is IRegionOrigin o)
+        if (tr is IRegionOriginReadOnly o)
         {
             CB_3DSReg.SelectedValue = (int)o.ConsoleRegion;
             CB_Country.SelectedValue = (int)o.Country;
@@ -794,22 +791,24 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         if (Entity.Format < 6)
             return false;
 
-        Span<ushort> m = stackalloc ushort[4];
-        Legality.GetSuggestedRelearnMoves(m);
-        if (Entity.RelearnMove1 == m[0] && Entity.RelearnMove2 == m[1] && Entity.RelearnMove3 == m[2] && Entity.RelearnMove4 == m[3])
+        Span<ushort> moves = stackalloc ushort[4];
+        Legality.GetSuggestedRelearnMoves(moves);
+        Span<ushort> current = stackalloc ushort[4];
+        Entity.GetRelearnMoves(current);
+        if (moves.SequenceEqual(current))
             return false;
 
         if (!silent)
         {
-            var msg = GetMoveListPrint(m, GameInfo.Strings.movelist);
+            var msg = GetMoveListPrint(moves, GameInfo.Strings.movelist);
             if (DialogResult.Yes != WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgPKMSuggestionRelearn, msg))
                 return false;
         }
 
-        CB_RelearnMove4.SelectedValue = (int)m[3];
-        CB_RelearnMove3.SelectedValue = (int)m[2];
-        CB_RelearnMove2.SelectedValue = (int)m[1];
-        CB_RelearnMove1.SelectedValue = (int)m[0];
+        CB_RelearnMove4.SelectedValue = (int)moves[3];
+        CB_RelearnMove3.SelectedValue = (int)moves[2];
+        CB_RelearnMove2.SelectedValue = (int)moves[1];
+        CB_RelearnMove1.SelectedValue = (int)moves[0];
         return true;
     }
 
@@ -915,7 +914,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
             var expInput = Util.ToUInt32(TB_EXP.Text);
             var expCalc = expInput;
             var gr = Entity.PersonalInfo.EXPGrowth;
-            int lvlExp = Experience.GetLevel(expInput, gr);
+            var lvlExp = Experience.GetLevel(expInput, gr);
             if (lvlExp == 100)
                 expCalc = Experience.GetEXP(100, gr);
 
@@ -1962,7 +1961,8 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
     private void ToggleInterface(byte format)
     {
         ToggleSecrets(HideSecretValues, format);
-        FLP_Handler.Visible = GB_nOT.Visible = FLP_HT.Visible = GB_RelearnMoves.Visible = format >= 6;
+        FLP_HT.Visible = GB_nOT.Visible = FLP_Handler.Visible =
+        FLP_Relearn4.Visible = FLP_Relearn3.Visible = FLP_Relearn2.Visible = FLP_Relearn1.Visible = GB_RelearnMoves.Visible = format >= 6;
 
         PB_Origin.Visible = format >= 6;
         FLP_NSparkle.Visible = L_NSparkle.Visible = CHK_NSparkle.Visible = format == 5;
@@ -2179,6 +2179,8 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
             var game = sav.Version;
             if (game <= 0)
                 game = Entity.Context.GetSingleGameVersion();
+            else if (game is GameVersion.COLO or GameVersion.XD)
+                game = GameVersion.CXD;
             CheckMetLocationChange(game, sav.Context);
             SetIfDifferentCount(source.Items, CB_HeldItem, force);
         }
@@ -2295,20 +2297,5 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         }
         TC_Editor.SelectedTab = Tab_Main;
         CB_PKRSStrain.DroppedDown = true;
-    }
-}
-
-public static class MoveDisplayState
-{
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Bitmap? GetMoveImage(bool isIllegal, PKM pk, int index)
-    {
-        if (isIllegal)
-            return Resources.warn;
-
-        if (MoveInfo.IsDummiedMove(pk, index))
-            return Resources.hint;
-
-        return null;
     }
 }

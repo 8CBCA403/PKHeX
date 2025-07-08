@@ -11,7 +11,7 @@ public sealed record EncounterStatic5(GameVersion Version)
     public bool IsRoaming { get; init; }
     ushort ILocation.Location => Location;
     ushort ILocation.EggLocation => EggLocation;
-    public bool IsShiny => false;
+    public bool IsShiny => Shiny == Shiny.Always;
     public bool IsEgg => EggLocation != 0;
     private bool Gift => FixedBall == Ball.Poke;
 
@@ -40,8 +40,8 @@ public sealed record EncounterStatic5(GameVersion Version)
 
     public PK5 ConvertToPKM(ITrainerInfo tr, EncounterCriteria criteria)
     {
+        int language = (int)Language.GetSafeLanguage(Generation, (LanguageID)tr.Language);
         var version = this.GetCompatibleVersion(tr.Version);
-        int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)tr.Language, version);
         var pi = PersonalTable.B2W2[Species];
         var pk = new PK5
         {
@@ -55,13 +55,13 @@ public sealed record EncounterStatic5(GameVersion Version)
 
             ID32 = tr.ID32,
             Version = version,
-            Language = lang,
+            Language = language,
             OriginalTrainerGender = tr.Gender,
             OriginalTrainerName = tr.OT,
 
             OriginalTrainerFriendship = pi.BaseFriendship,
 
-            Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
+            Nickname = SpeciesName.GetSpeciesNameGeneration(Species, language, Generation),
         };
 
         if (IsEgg)
@@ -81,44 +81,25 @@ public sealed record EncounterStatic5(GameVersion Version)
         return pk;
     }
 
-    private void SetPINGA(PK5 pk, EncounterCriteria criteria, PersonalInfo5B2W2 pi)
+    private void SetPINGA(PK5 pk, in EncounterCriteria criteria, PersonalInfo5B2W2 pi)
     {
-        var gender = criteria.GetGender(Gender, pi);
-        var nature = criteria.GetNature();
-        var ability = criteria.GetAbilityFromNumber(Ability);
-        var type = Shiny == Shiny.Always ? PIDType.G5MGShiny : PIDType.None;
-        PIDGenerator.SetRandomWildPID5(pk, nature, ability, gender, type);
-        criteria.SetRandomIVs(pk);
-        if (Shiny == Shiny.Always)
-            return;
-        if (pk.IsShiny)
-        {
-            if ((Shiny == Shiny.Random && !criteria.Shiny.IsShiny()) || Shiny == Shiny.Never)
-            {
-                var pid = pk.PID;
-                pid ^= 0x1000_0000;
-                var result = (pid & 1) ^ (pid >> 31) ^ (pk.TID16 & 1) ^ (pk.SID16 & 1);
-                if (result == 1)
-                    pid ^= 1;
-                pk.PID = pid;
-            }
-        }
+        var tmp = criteria;
+        if (Gender is not FixedGenderUtil.GenderRandom)
+            tmp = tmp with { Gender = (Gender)Gender };
+        if (Shiny is Shiny.Never)
+            tmp = tmp with { Shiny = Shiny.Never };
+
+        var seed = Util.Rand32();
+        var gr = pi.Gender;
+        var abilityIndex = criteria.GetAbilityFromNumber(Ability);
+        if (IsShiny)
+            MonochromeRNG.GenerateShiny(pk, tmp, gr, seed, abilityIndex);
         else
-        {
-            if (Shiny == Shiny.Random && criteria.Shiny.IsShiny())
-            {
-                var pid = pk.PID;
-                var low = ((pid >> 16) & 1) | (pid & 0xFFFE);
-                uint idx = (uint)pk.TID16 ^ pk.SID16;
-                if ((idx & 1) == 1)
-                    low ^= 1;
-                pid = ((low ^ idx) << 16) | low;
-                var result = (pid & 1) ^ (pid >> 31) ^ (pk.TID16 & 1) ^ (pk.SID16 & 1);
-                if (result == 1)
-                    pid ^= 1;
-                pk.PID = pid;
-            }
-        }
+            MonochromeRNG.Generate(pk, tmp, gr, seed, abilityIndex);
+
+        pk.Nature = criteria.GetNature();
+        pk.RefreshAbility(abilityIndex);
+        criteria.SetRandomIVs(pk);
     }
 
     #endregion
