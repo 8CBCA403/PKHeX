@@ -70,12 +70,26 @@ public static class ReplaceTrainerName8
         _ => "Sword.",
     };
 
-    private static bool IsCJK(char c) => c is (>= (char)0x4E00 and <= (char)0x9FA0 and not (char)0x4EDD);
+    /// <summary>
+    /// Checks if the character is in the CJK Unified Ideographs range (Chinese, Japanese, Korean).
+    /// </summary>
+    /// <remarks>
+    /// Range only for Common and uncommon kanji, excluding rare kanji and symbols. Likely GB2312.
+    /// </remarks>
+    private static bool IsCJK(char c)      => c is (>= (char)0x4E00 and <= (char)0x9FA0) and not (char)0x4EDD;
+
+    // General full-width character checking methods
     private static bool IsHiragana(char c) => c is (>= (char)0x3041 and <= (char)0x3090);
     private static bool IsKatakana(char c) => c is (>= (char)0x30A1 and <= (char)0x30FA);
-    private static bool IsKanji(char c) => c is (>= (char)0x4E00 and <= (char)0x9FCC);
-    private static bool IsHangul(char c) => c is (>= (char)0xAC00 and <= (char)0xD7A3);
+    private static bool IsKanji(char c)    => c is (>= (char)0x4E00 and <= (char)0x9FCC); // version 6.1
+    private static bool IsHangul(char c)   => c is (>= (char)0xAC00 and <= (char)0xD7A3);
 
+    /// <summary>
+    /// Checks if the entered text is a valid string for the specified language.
+    /// </summary>
+    /// <param name="name">Input string to validate.</param>
+    /// <param name="language">Entity language to validate against.</param>
+    /// <returns><see langword="true"/> if the string is valid for the specified language; otherwise, <see langword="false"/>.</returns>
     public static bool IsValid(ReadOnlySpan<char> name, LanguageID language)
     {
         // Check if fullwidth is used, and if it doesn't exceed 6 chars.
@@ -89,14 +103,29 @@ public static class ReplaceTrainerName8
             }
         }
 
-        bool fullWidth = false;
-        for (var i = 0; i < name.Length; i++)
-        {
-            var c = name[i];
-            fullWidth |= IsHiragana(c) || IsKatakana(c) || IsKanji(c) || IsHangul(c);
-            if (fullWidth && i > Legal.MaxLengthTrainerAsian)
-                return false;
-        }
+        if (IsAnyFullWidthLengthTooLong(name, out _))
+            return false;
+
         return true;
+    }
+
+    /// <summary>
+    /// Checks if any full-width characters are entered, and if so, ensures the total length does not exceed 6 characters.
+    /// </summary>
+    /// <param name="name">Input string to validate.</param>
+    /// <param name="anyFullWidth">Indicates if any full-width characters were found in the input.</param>
+    /// <returns><see langword="true"/> if any full-width characters are found in a too-long string.</returns>
+    public static bool IsAnyFullWidthLengthTooLong(ReadOnlySpan<char> name, out bool anyFullWidth)
+    {
+        // disassembled logic scans each character, and if a full-width char has been found at any index, checks if current index > 6
+        // we already know the length, so we can just check if any full-width exists
+        anyFullWidth = false;
+        foreach (var c in name)
+        {
+            anyFullWidth = IsHiragana(c) || IsKatakana(c) || IsKanji(c) || IsHangul(c);
+            if (anyFullWidth)
+                return name.Length > Legal.MaxLengthTrainerAsian;
+        }
+        return false;
     }
 }

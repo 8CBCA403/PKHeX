@@ -6,11 +6,11 @@ namespace PKHeX.Core;
 /// <summary>
 /// Generation 7 Mystery Gift Template File (LGP/E)
 /// </summary>
-public sealed class WB7 : DataMysteryGift, ILangNick, IAwakened, IRelearn, IEncounterServerDate, INature, ILangNicknamedTemplate,
+public sealed class WB7(Memory<byte> raw) : DataMysteryGift(raw), ILangNick, IAwakened, IRelearn, IEncounterServerDate,
+    INature, ILangNicknamedTemplate,
     IMetLevel, IRestrictVersion, IRibbonSetEvent3, IRibbonSetEvent4
 {
     public WB7() : this(new byte[Size]) { }
-    public WB7(Memory<byte> raw) : base(raw) { }
     public override WB7 Clone() => new(Data.ToArray());
 
     public const int Size = 0x310;
@@ -153,11 +153,7 @@ public sealed class WB7 : DataMysteryGift, ILangNick, IAwakened, IRelearn, IEnco
         _ => Shiny.Never,
     };
 
-    private uint GetShinyXor()
-    {
-        var xor = PID ^ ID32;
-        return (xor >> 16) ^ (xor & 0xFFFF);
-    }
+    private uint GetShinyXor() => ShinyUtil.GetShinyXor(PID, ID32);
 
     public override uint ID32 { get => ReadUInt32LittleEndian(Card[0x68..]); set => WriteUInt32LittleEndian(Card[0x68..], value); }
     public override ushort TID16 { get => ReadUInt16LittleEndian(Card[0x68..]); set => WriteUInt16LittleEndian(Card[0x68..], value); }
@@ -464,7 +460,7 @@ public sealed class WB7 : DataMysteryGift, ILangNick, IAwakened, IRelearn, IEnco
     }
 
     /// <summary>
-    ///  HOME Meltan is a special case where height/weight is fixed.
+    /// HOME Meltan is a special case where height/weight is fixed.
     /// </summary>
     public bool IsHeightWeightFixed => CardID is 9028;
 
@@ -476,13 +472,13 @@ public sealed class WB7 : DataMysteryGift, ILangNick, IAwakened, IRelearn, IEnco
 
     public float GetHomeHeightAbsolute() => CardID switch
     {
-        9028 => 18.1490211f,
+        9028 => 18.1490211f, // corresponds to 98, but forced to 128
         _ => throw new ArgumentException(),
     };
 
     public float GetHomeWeightAbsolute() => CardID switch
     {
-        9028 => 77.09419f,
+        9028 => 77.09419f, // corresponds to 167, but forced to 128
         _ => throw new ArgumentException(),
     };
 

@@ -21,13 +21,17 @@ public sealed class GameStrings : IBasicStrings
     // Met Locations
     public readonly LocationSet0 Gen2, Gen3, CXD;
     public readonly LocationSet4 Gen4;
-    public readonly LocationSet6 Gen5, Gen6, Gen7, Gen7b, Gen8, Gen8a, Gen8b, Gen9;
+    public readonly LocationSet6 Gen5, Gen6, Gen7, Gen7b, Gen8, Gen8a, Gen8b, Gen9, Gen9a;
 
     // Misc
     public readonly string[] wallpapernames, puffs, walkercourses;
     public readonly string[] uggoods, ugspheres, ugtraps, ugtreasures;
     public readonly string[] seals, accessories, backdrops, poketchapps;
+    public readonly string[] console3ds, languageNames;
     private readonly string LanguageFilePrefix;
+
+    public ReadOnlySpan<string> HiddenPowerTypes => types.AsSpan(1, HiddenPower.TypeCount);
+    public readonly RibbonStrings Ribbons;
 
     public LanguageID Language { get; }
     public string EggName { get; }
@@ -59,6 +63,7 @@ public sealed class GameStrings : IBasicStrings
         Language = GameLanguage.GetLanguage(LanguageFilePrefix = langFilePrefix);
 
         ribbons = Get("ribbons");
+        Ribbons = new(ribbons);
 
         // Past Generation strings
         g3items = Get("ItemsG3");
@@ -124,6 +129,8 @@ public sealed class GameStrings : IBasicStrings
         accessories = Get("accessories");
         backdrops = Get("backdrops");
         poketchapps = Get("poketchapps");
+        console3ds = Get("console3ds");
+        languageNames = Get("language");
 
         EggName = specieslist[0];
         Gen4 = Get4("hgss");
@@ -136,6 +143,7 @@ public sealed class GameStrings : IBasicStrings
         Gen8a = Get6("la");
         Gen8b = Get6("bdsp");
         Gen9 = Get6("sv");
+        Gen9a = Get6("za");
 
         Sanitize();
 
@@ -275,6 +283,7 @@ public sealed class GameStrings : IBasicStrings
 
         SanitizeItemsLA(itemlist);
         SanitizeItemsSV(itemlist);
+        SanitizeItemsZA(itemlist);
 
         if (Language is French)
         {
@@ -291,6 +300,26 @@ public sealed class GameStrings : IBasicStrings
 
         itemlist[464] += " (G4)"; // Secret Medicine
         itemlist[1763] += " (LA)"; // Secret Medicine
+    }
+
+    private void SanitizeItemsZA(Span<string> items)
+    {
+        // Seed of Mastery
+        items[1622] += " (LA)";
+        items[2558] += " (ZA)";
+        // Canari Plushes
+        Canari(items[2620..]); // Red
+        Canari(items[2623..]); // Gold
+        Canari(items[2626..]); // Pink
+        Canari(items[2629..]); // Green
+        Canari(items[2632..]); // Blue
+        return;
+        static void Canari(Span<string> arr)
+        {
+            arr[0] += " (1)";
+            arr[1] += " (2)";
+            arr[2] += " (3)";
+        }
     }
 
     private static void SanitizeItemsSV(Span<string> items)
@@ -390,6 +419,7 @@ public sealed class GameStrings : IBasicStrings
         SanitizeMetGen8a(Gen8a);
         SanitizeMetGen8b(Gen8b);
         SanitizeMetGen9(Gen9);
+        SanitizeMetGen9a(Gen9a);
 
         if (Language is Italian or Spanish)
         {
@@ -685,6 +715,15 @@ public sealed class GameStrings : IBasicStrings
      // set.Met3[18] += " (-)"; // Pokémon HOME -- duplicate with 40000's entry
     }
 
+    private static void SanitizeMetGen9a(LocationSet6 set)
+    {
+        // ZA: Truncated list to remove all after 235 (no encounters there).
+        Deduplicate(set.Met0, 00000);
+        Deduplicate(set.Met3, 30000);
+        Deduplicate(set.Met4, 40000);
+        Deduplicate(set.Met6, 60000);
+    }
+
     private static void Deduplicate(Span<string> arr, int group)
     {
         var counts = new Dictionary<string, int>();
@@ -722,14 +761,15 @@ public sealed class GameStrings : IBasicStrings
         }
     }
 
-    public string[] GetItemStrings(EntityContext context, GameVersion game = GameVersion.Any) => context switch
+    public string[] GetItemStrings(EntityContext context, GameVersion version = GameVersion.Any) => context switch
     {
         EntityContext.Gen1 => g1items,
         EntityContext.Gen2 => g2items,
-        EntityContext.Gen3 => GetItemStrings3(game),
+        EntityContext.Gen3 => GetItemStrings3(version),
         EntityContext.Gen4 => g4items, // mail names changed 4->5
         EntityContext.Gen8b => GetItemStrings8b(),
         EntityContext.Gen9 => GetItemStrings9(),
+        EntityContext.Gen9a => GetItemStrings9a(),
         _ => itemlist,
     };
 
@@ -771,9 +811,51 @@ public sealed class GameStrings : IBasicStrings
         }
     }
 
-    private string[] GetItemStrings3(GameVersion game)
+    private string[] GetItemStrings9a()
     {
-        switch (game)
+        // in Generation 9, TM #'s are padded to 3 digits; format them appropriately here
+        var clone = (string[])itemlist.Clone();
+        var span = clone.AsSpan();
+        var zero = Language is Japanese or ChineseS or ChineseT ? '０' : '0';
+        var prefix = span[328].AsSpan(0, 2);
+
+        InsertZero(prefix, span[328..420], zero, 1); // 01-92
+        InsertZero(prefix, span[618..621], zero, 93); // 93-95
+        InsertZero(prefix, span[690..694], zero, 96); // 96-99
+        InsertZero(prefix, span[2160..2290], zero, 100); // 100-229
+        return clone;
+
+        static void InsertZero(ReadOnlySpan<char> prefix, Span<string> arr, char zero, int start)
+        {
+            int i = 0;
+            foreach (ref var item in arr)
+            {
+                var index = start + i;
+                var remap = ItemConverter.RemapTechnicalMachineItemName9a;
+                if (index >= remap.Length)
+                    break;
+                index += remap[index];
+                item = GetActualName(prefix, index, zero);
+                i++;
+            }
+            arr[i..].Clear();
+        }
+        static string GetActualName(ReadOnlySpan<char> prefix, int value, char pad)
+        {
+            Span<char> buffer = stackalloc char[5];
+            prefix.CopyTo(buffer);
+            var arr = buffer[2..];
+            arr.Fill(pad);
+            arr[2] += (char)(value % 10); value /= 10;
+            arr[1] += (char)(value % 10); value /= 10;
+            arr[0] += (char)(value % 10);
+            return new string(buffer);
+        }
+    }
+
+    private string[] GetItemStrings3(GameVersion version)
+    {
+        switch (version)
         {
             case GameVersion.COLO:
                 return g3coloitems;
@@ -784,10 +866,24 @@ public sealed class GameStrings : IBasicStrings
                     return g3items;
 
                 var g3ItemsWithEBerry = (string[])g3items.Clone();
-                g3ItemsWithEBerry[175] = EReaderBerrySettings.DisplayName;
+                g3ItemsWithEBerry[175] = GetEnigmaBerryName3(Language, EReaderBerrySettings.Name);
                 return g3ItemsWithEBerry;
         }
     }
+
+    private static string GetEnigmaBerryName3(LanguageID language, string berryName) => string.Format(language switch
+    {
+        Japanese => "{0}のみ",
+        English => "{0} BERRY",
+        German => "{0}BEERE",
+        French => "BAIE {0}",
+        Italian => "BACCA{0}",
+        Spanish => "BAYA {0}",
+        Korean => "{0}열매",
+        ChineseS => "{0}果",
+        ChineseT => "{0}果",
+        _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
+    }, berryName);
 
     /// <summary>
     /// Gets the location name for the specified parameters.
@@ -848,6 +944,7 @@ public sealed class GameStrings : IBasicStrings
         8 when version is GameVersion.PLA => Gen8a,
         8 when GameVersion.BDSP.Contains(version) => Gen8b,
         8 => Gen8,
+        9 when version is GameVersion.ZA => Gen9a,
         9 => Gen9,
 
         _ => null,

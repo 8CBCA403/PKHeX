@@ -187,7 +187,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
 
     private readonly PictureBox[] relearnPB;
     public SaveFile RequestSaveFile => SaveFileRequested.Invoke(this, EventArgs.Empty);
-    public bool PKMIsUnsaved => FieldsLoaded && LastData.AsSpan().ContainsAnyExcept<byte>(0) && !LastData.SequenceEqual(CurrentPKM.Data);
+    public bool PKMIsUnsaved => FieldsLoaded && LastData.AsSpan().ContainsAnyExcept<byte>(0) && !CurrentPKM.Data.SequenceEqual(LastData);
 
     private readonly MoveChoice[] Moves;
     private readonly ComboBox[] Relearn;
@@ -206,7 +206,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         }
 
         var pk = GetPKMfromFields();
-        LastData = pk.Data;
+        LastData = pk.Data.ToArray();
         return pk.Clone();
     }
 
@@ -269,6 +269,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         EntityContext.Gen7b => (PopulateFieldsPB7, PreparePB7),
         EntityContext.Gen8a => (PopulateFieldsPA8, PreparePA8),
         EntityContext.Gen8b => (PopulateFieldsPB8, PreparePB8),
+        EntityContext.Gen9a => (PopulateFieldsPA9, PreparePA9),
         _ => throw new ArgumentOutOfRangeException(nameof(context), context, null),
     };
 
@@ -325,7 +326,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         SetMarkings();
         UpdateLegality();
         UpdateSprite();
-        LastData = PreparePKM().Data;
+        LastData = PreparePKM().Data.ToArray();
         RefreshFontWarningButton();
     }
 
@@ -482,7 +483,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
 
         bool tmp = FieldsLoaded;
         FieldsLoaded = false;
-        var items = GameInfo.FilteredSources.GetAbilityList(Entity);
+        var items = GameInfo.FilteredSources.GetAbilityList(Entity.PersonalInfo);
         CB_Ability.DataSource = items;
         CB_Ability.SelectedIndex = Math.Clamp(ability, 0, items.Count - 1); // restore original index if available
         FieldsLoaded = tmp;
@@ -538,6 +539,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         OriginMark.Gen8Arc => Properties.Resources.gen_la,
         OriginMark.Gen9Paldea => Properties.Resources.gen_sv,
         OriginMark.GameBoy => Properties.Resources.gen_vc,
+        OriginMark.Gen9ZA => Properties.Resources.gen_za,
         OriginMark.GO => Properties.Resources.gen_go,
         OriginMark.LetsGo => Properties.Resources.gen_gg,
         _ => null,
@@ -908,17 +910,19 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         if (ChangingFields)
             return;
         ChangingFields = true;
+
+        var pi = Entity.PersonalInfo;
+        var gr = pi.EXPGrowth;
         if (sender == TB_EXP)
         {
             // Change the Level
             var expInput = Util.ToUInt32(TB_EXP.Text);
             var expCalc = expInput;
-            var gr = Entity.PersonalInfo.EXPGrowth;
             var lvlExp = Experience.GetLevel(expInput, gr);
-            if (lvlExp == 100)
-                expCalc = Experience.GetEXP(100, gr);
+            if (lvlExp == Experience.MaxLevel)
+                expCalc = Experience.GetEXP(Experience.MaxLevel, gr);
 
-            var lvlInput = Math.Max(1, Util.ToInt32(TB_Level.Text));
+            var lvlInput = Experience.ClampLevel((byte)Util.ToInt32(TB_Level.Text));
             if (lvlInput != lvlExp)
                 TB_Level.Text = lvlExp.ToString();
             if (expInput != expCalc && !HaX)
@@ -928,10 +932,10 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         {
             // Change the XP
             var input = Util.ToInt32(TB_Level.Text);
-            var level = (byte)Math.Clamp(input, 1, 100);
+            var level = (byte)Math.Clamp(input, Experience.MinLevel, Experience.MaxLevel);
             if (input != level && !string.IsNullOrWhiteSpace(TB_Level.Text))
                 TB_Level.Text = level.ToString();
-            TB_EXP.Text = Experience.GetEXP(level, Entity.PersonalInfo.EXPGrowth).ToString();
+            TB_EXP.Text = Experience.GetEXP(level, gr).ToString();
         }
         ChangingFields = false;
         if (FieldsLoaded) // store values back
@@ -1328,7 +1332,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         if (CHK_IsEgg.Checked)
             species = 0; // get the egg name.
 
-        if (SpeciesName.IsNicknamedAnyLanguage(species, TB_Nickname.Text, Entity.Format))
+        if (SpeciesName.IsNicknamedAnyLanguage(species, TB_Nickname.Text, Entity.Context))
             CHK_NicknamedFlag.Checked = true;
     }
 
@@ -1366,7 +1370,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         else
         {
             // If name is that of another language, don't replace the nickname
-            if (sender != CB_Language && !SpeciesName.IsNicknamedAnyLanguage(species, TB_Nickname.Text, Entity.Format))
+            if (sender != CB_Language && !SpeciesName.IsNicknamedAnyLanguage(species, TB_Nickname.Text, Entity.Context))
                 return;
             nickname = SpeciesName.GetSpeciesNameGeneration(species, language, Entity.Format);
         }
@@ -1834,7 +1838,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
                 PB_Affixed.Image = RibbonSpriteUtil.GetRibbonSprite((RibbonIndex)affixed);
                 PB_Affixed.Visible = true;
                 // Update the tooltip with the ribbon name.
-                var name = RibbonStrings.GetNameSafe($"Ribbon{(RibbonIndex)affixed}", out var result) ? result : affixed.ToString();
+                var name = GameInfo.Strings.Ribbons.GetNameSafe($"Ribbon{(RibbonIndex)affixed}", out var result) ? result : affixed.ToString();
                 if (pk is IRibbonSetMarks { RibbonMarkCount: > 1 } y)
                     name += Environment.NewLine + GetRibbonAffixCount(y);
                 AffixedTip.SetToolTip(PB_Affixed, name);
@@ -1909,6 +1913,26 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         UpdateLegality();
     }
 
+    private void B_PlusRecord_Click(object sender, EventArgs e)
+    {
+        if (Entity is not IPlusRecord m || Entity.PersonalInfo is not IPermitPlus p)
+            return;
+
+        if (ModifierKeys.HasFlag(Keys.Shift))
+        {
+            m.SetPlusFlags(Entity, p, PlusRecordApplicatorOption.LegalCurrent);
+            if (Entity is PA9 { IsAlpha: true } pa9 && pa9.PersonalInfo is PersonalInfo9ZA pi)
+                PlusRecordApplicator.SetPlusFlagsSpecific(pa9, pi, pi.AlphaMove);
+
+            UpdateLegality();
+            return;
+        }
+
+        using var form = new PlusRecordEditor(m, p, Entity);
+        form.ShowDialog();
+        UpdateLegality();
+    }
+
     /// <summary>
     /// Refreshes the interface for the current PKM format.
     /// </summary>
@@ -1938,8 +1962,10 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         FLP_ReceivedDate.Visible = pb7;
         FLP_Country.Visible = FLP_SubRegion.Visible = FLP_3DSRegion.Visible = t is IRegionOrigin;
         FLP_OriginalNature.Visible = format >= 8;
+        FLP_Spirit7b.Visible = FLP_Mood7b.Visible = pb7;
         B_RelearnFlags.Visible = t is ITechRecord;
         B_MoveShop.Visible = t is IMoveShop8Mastery;
+        B_PlusRecord.Visible = t is IPlusRecord;
         FLP_HTLanguage.Visible = format >= 8;
         L_AlphaMastered.Visible = CB_AlphaMastered.Visible = t is PA8;
         FLP_ObedienceLevel.Visible = t is IObedienceLevel;
@@ -1948,6 +1974,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
             L_FormArgument.Visible = false;
         StatusView.Visible = Main.Settings.EntityEditor.ShowStatusCondition;
 
+        DEV_Ability.Enabled = DEV_Ability.Visible = DEV_Ability.TabStop = format > 3 && HaX || t is PA9;
         ToggleInterface(Entity.Format);
     }
 
@@ -1965,12 +1992,16 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         FLP_Relearn4.Visible = FLP_Relearn3.Visible = FLP_Relearn2.Visible = FLP_Relearn1.Visible = GB_RelearnMoves.Visible = format >= 6;
 
         PB_Origin.Visible = format >= 6;
-        FLP_NSparkle.Visible = L_NSparkle.Visible = CHK_NSparkle.Visible = format == 5;
+        FLP_NSparkle.Visible = L_NSparkle.Visible = CHK_NSparkle.Visible = FLP_PokeStarFame.Visible = format == 5;
 
         CHK_AsEgg.Visible = GB_EggConditions.Visible = PB_Mark5.Visible = PB_Mark6.Visible = format >= 4;
-        ShinyLeaf.Visible = format == 4;
+        ShinyLeaf.Visible = FLP_WalkingMood.Visible = format == 4;
 
-        DEV_Ability.Enabled = DEV_Ability.Visible = DEV_Ability.TabStop = format > 3 && HaX;
+        // Ensure marking order is correct for gen3|future. Gen3 has square second, not third.
+        var orderCorrect = (format == 3) == (PB_Mark3.Location.X < PB_Mark2.Location.X);
+        if (!orderCorrect) // Swap the locations of the marks.
+            (PB_Mark2.Location, PB_Mark3.Location) = (PB_Mark3.Location, PB_Mark2.Location);
+
         CB_Ability.Visible = CB_Ability.TabStop = !DEV_Ability.Enabled && format >= 3;
         FLP_Nature.Visible = format >= 3;
         FLP_Ability.Visible = format >= 3;
@@ -2238,7 +2269,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
         var langSav = (LanguageID)RequestSaveFile.Language;
 
         // Gen 7 unnicknamed Chinese Pokémon will always be valid after remapping
-        var isUnnicknamedChinese = Entity is PK7 && (SpeciesName.GetSpeciesNameLanguage(Entity.Species, (int)langPk, TB_Nickname.Text, 7) is (int)LanguageID.ChineseS or (int)LanguageID.ChineseT);
+        var isUnnicknamedChinese = Entity is PK7 && (SpeciesName.GetSpeciesNameLanguage(Entity.Species, (int)langPk, TB_Nickname.Text, EntityContext.Gen7) is (int)LanguageID.ChineseS or (int)LanguageID.ChineseT);
 
         BTN_NicknameWarn.Visible = !isUnnicknamedChinese && StringFontUtil.HasUndefinedCharacters(TB_Nickname.Text, context, langPk, langSav);
         BTN_OTNameWarn.Visible = StringFontUtil.HasUndefinedCharacters(TB_OT.Text, context, langPk, langSav);
