@@ -245,7 +245,7 @@
     "NickMatchLanguageFail": "El mote no coincide con el de la especie.",
     "NickMatchLanguageFlag": "Mote marcado, coincide con el de la especie.",
     "NickMatchNoOthers": "El mote no coincide con el de otra especie.",
-    "NickMatchNoOthersFail": "El Mote coincide con el de otra especie (+Idioma).",
+    "NickMatchNoOthersFail": "El mote coincide con el de otra especie (+Idioma).",
     "OTLanguage": "El ID del lenguaje debería de ser {0}, no {1}.",
     "OTLong": "El nombre del EO demasiado largo.",
     "OTShort": "El nombre del EO es muy corto.",

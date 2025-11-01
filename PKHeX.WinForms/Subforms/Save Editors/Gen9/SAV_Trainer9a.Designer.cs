@@ -94,8 +94,6 @@ namespace PKHeX.WinForms
             CAL_LastSavedDate = new System.Windows.Forms.DateTimePicker();
             L_LastSaved = new System.Windows.Forms.Label();
             CAL_LastSavedTime = new System.Windows.Forms.DateTimePicker();
-            L_Started = new System.Windows.Forms.Label();
-            CAL_AdventureStartDate = new System.Windows.Forms.DateTimePicker();
             Tab_MiscValues = new System.Windows.Forms.TabPage();
             label3 = new System.Windows.Forms.Label();
             L_RoyaleTicketPointsInfinite = new System.Windows.Forms.Label();
@@ -120,6 +118,7 @@ namespace PKHeX.WinForms
             P_Picture1 = new System.Windows.Forms.PictureBox();
             P_Picture2 = new System.Windows.Forms.PictureBox();
             P_Picture3 = new System.Windows.Forms.PictureBox();
+            B_CollectScrews = new System.Windows.Forms.Button();
             TC_Editor.SuspendLayout();
             Tab_Overview.SuspendLayout();
             Tab_MiscValues.SuspendLayout();
@@ -633,8 +632,6 @@ namespace PKHeX.WinForms
             Tab_Overview.Controls.Add(CAL_LastSavedDate);
             Tab_Overview.Controls.Add(L_LastSaved);
             Tab_Overview.Controls.Add(CAL_LastSavedTime);
-            Tab_Overview.Controls.Add(L_Started);
-            Tab_Overview.Controls.Add(CAL_AdventureStartDate);
             Tab_Overview.Controls.Add(MT_Hours);
             Tab_Overview.Controls.Add(L_Hours);
             Tab_Overview.Controls.Add(MT_Minutes);
@@ -701,30 +698,9 @@ namespace PKHeX.WinForms
             CAL_LastSavedTime.TabIndex = 57;
             CAL_LastSavedTime.Value = new System.DateTime(2000, 1, 1, 0, 0, 0, 0);
             // 
-            // L_Started
-            // 
-            L_Started.Location = new System.Drawing.Point(46, 206);
-            L_Started.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            L_Started.Name = "L_Started";
-            L_Started.Size = new System.Drawing.Size(124, 23);
-            L_Started.TabIndex = 73;
-            L_Started.Text = "Game Started:";
-            L_Started.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            // 
-            // CAL_AdventureStartDate
-            // 
-            CAL_AdventureStartDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            CAL_AdventureStartDate.Location = new System.Drawing.Point(170, 205);
-            CAL_AdventureStartDate.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            CAL_AdventureStartDate.MaxDate = new System.DateTime(2050, 12, 31, 0, 0, 0, 0);
-            CAL_AdventureStartDate.MinDate = new System.DateTime(1932, 1, 1, 0, 0, 0, 0);
-            CAL_AdventureStartDate.Name = "CAL_AdventureStartDate";
-            CAL_AdventureStartDate.Size = new System.Drawing.Size(120, 25);
-            CAL_AdventureStartDate.TabIndex = 72;
-            CAL_AdventureStartDate.Value = new System.DateTime(2000, 1, 1, 0, 0, 0, 0);
-            // 
             // Tab_MiscValues
             // 
+            Tab_MiscValues.Controls.Add(B_CollectScrews);
             Tab_MiscValues.Controls.Add(label3);
             Tab_MiscValues.Controls.Add(L_RoyaleTicketPointsInfinite);
             Tab_MiscValues.Controls.Add(L_RoyaleRegularTicketPoints);
@@ -1008,6 +984,16 @@ namespace PKHeX.WinForms
             P_Picture3.TabStop = false;
             P_Picture3.Click += P_Picture3_Click;
             // 
+            // B_CollectScrews
+            // 
+            B_CollectScrews.Location = new System.Drawing.Point(365, 106);
+            B_CollectScrews.Name = "B_CollectScrews";
+            B_CollectScrews.Size = new System.Drawing.Size(120, 64);
+            B_CollectScrews.TabIndex = 85;
+            B_CollectScrews.Text = "Collect All Colorful Screws";
+            B_CollectScrews.UseVisualStyleBackColor = true;
+            B_CollectScrews.Click += B_CollectScrews_Click;
+            // 
             // SAV_Trainer9a
             // 
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
@@ -1113,8 +1099,6 @@ namespace PKHeX.WinForms
         private System.Windows.Forms.Label L_Y;
         private System.Windows.Forms.Label L_Z;
         private System.Windows.Forms.Label L_X;
-        private System.Windows.Forms.Label L_Started;
-        private System.Windows.Forms.DateTimePicker CAL_AdventureStartDate;
         private System.Windows.Forms.NumericUpDown NUD_R;
         private System.Windows.Forms.Label L_R;
         private System.Windows.Forms.DateTimePicker CAL_LastSavedDate;
@@ -1135,5 +1119,6 @@ namespace PKHeX.WinForms
         private System.Windows.Forms.PictureBox P_Picture1;
         private System.Windows.Forms.PictureBox P_Picture2;
         private System.Windows.Forms.PictureBox P_Picture3;
+        private System.Windows.Forms.Button B_CollectScrews;
     }
 }
