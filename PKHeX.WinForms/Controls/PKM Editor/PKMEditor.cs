@@ -1011,7 +1011,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
 
     private void Update255_MTB(object sender, EventArgs e)
     {
-        if (sender is not MaskedTextBox tb)
+        if (sender is not MaskedTextBox tb || !FieldsLoaded)
             return;
         if (Util.ToInt32(tb.Text) > byte.MaxValue)
             tb.Text = "255";
@@ -2202,7 +2202,7 @@ public sealed partial class PKMEditor : UserControl, IMainEditor
             return;
 
         var met = Util.ToInt32(TB_MetLevel.Text);
-        var metLevel = (byte)Math.Clamp(0, 100, met);
+        var metLevel = (byte)Math.Clamp(met, 0, 100);
         var suggest = l.GetSuggestedObedienceLevel(Entity, metLevel);
 
         var current = Util.ToInt32(TB_ObedienceLevel.Text);
