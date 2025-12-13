@@ -6,7 +6,7 @@ namespace PKHeX.Core;
 /// Gift Encounter found in <see cref="GameVersion.ZA"/>.
 /// </summary>
 public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte Size = EncounterGift9a.NoScale)
-    : IEncounter9a, IEncounterConvertible<PA9>, IFixedGender, IFixedNature, IFixedIVSet, IMoveset
+    : IEncounter9a, IEncounterConvertible<PA9>, IFixedGender, IFixedNature, IFixedIVSet, IMoveset, IFixedTrainer, IFixedNickname
 {
     public byte Generation => 9;
     private const GameVersion Version = GameVersion.ZA;
@@ -35,6 +35,20 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
     public string Name => "Gift Encounter";
     public string LongName => Name;
 
+    public bool IsFixedTrainer => Trainer != TrainerGift9a.None;
+    public bool IsFixedNickname => Trainer == TrainerGift9a.Gimmighoul;
+    public bool IsTrainerMatch(PKM pk, ReadOnlySpan<char> trainer, int language)
+    {
+        var expect = GetFixedTrainerName(Trainer, pk.Language);
+        return trainer.SequenceEqual(expect);
+    }
+    public bool IsNicknameMatch(PKM pk, ReadOnlySpan<char> nickname, int language)
+    {
+        var expect = GetGimmighoulFixedNickname(Trainer, pk.Language);
+        return nickname.SequenceEqual(expect);
+    }
+    public string GetNickname(int language) => IsFixedNickname ? GetGimmighoulFixedNickname(Trainer, language) : SpeciesName.GetSpeciesNameGeneration(Species, language, Generation);
+
     #region Generating
 
     PKM IEncounterConvertible.ConvertToPKM(ITrainerInfo tr, EncounterCriteria criteria) => ConvertToPKM(tr, criteria);
@@ -58,7 +72,7 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
             IsAlpha = IsAlpha,
             Ball = (byte)Ball.Poke,
 
-            Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation),
+            Nickname = GetNickname(lang),
             ObedienceLevel = LevelMin,
         };
 
@@ -73,6 +87,12 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
             pk.OriginalTrainerName = GetFixedTrainerName(Trainer, lang);
             pk.OriginalTrainerGender = GetFixedTrainerGender(Trainer);
             pk.ID32 = GetFixedTrainerID32(Trainer);
+
+            if (Trainer is TrainerGift9a.Gimmighoul)
+            {
+                pk.IsNicknamed = true;
+                pk.Nickname = GetGimmighoulFixedNickname(Trainer, lang);
+            }
         }
 
         SetPINGA(pk, criteria, pi);
@@ -204,7 +224,7 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
         return SeedCorrelationResult.Invalid;
     }
 
-    public LumioseCorrelation Correlation => IsAlpha ? LumioseCorrelation.PreApplyIVs : LumioseCorrelation.ReApplyIVs;
+    public LumioseCorrelation Correlation => IsAlpha ? LumioseCorrelation.PreApplyIVs : IVs.IsSpecified || FlawlessIVCount != 0 ? LumioseCorrelation.ReApplyIVs : LumioseCorrelation.Normal;
 
     public GenerateParam9a GetParams(PersonalInfo9ZA pi)
     {
@@ -236,6 +256,7 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
         TrainerGift9a.Lucario => 912562,
         TrainerGift9a.Floette => 1,
         TrainerGift9a.Stunfisk => 250932,
+        TrainerGift9a.Gimmighoul => 115090,
         _ => throw new ArgumentOutOfRangeException(nameof(trainer), trainer, null),
     };
 
@@ -244,6 +265,7 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
         TrainerGift9a.Lucario => 1,
         TrainerGift9a.Floette => 0,
         TrainerGift9a.Stunfisk => 0,
+        TrainerGift9a.Gimmighoul => 0,
         _ => throw new ArgumentOutOfRangeException(nameof(trainer), trainer, null),
     };
 
@@ -291,7 +313,36 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
             (int)LanguageID.SpanishL => "René",
             _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
         },
+        TrainerGift9a.Gimmighoul => language switch
+        {
+            (int)LanguageID.Japanese => "セロ",
+            (int)LanguageID.English => "Thelo",
+            (int)LanguageID.French => "Thélo",
+            (int)LanguageID.Italian => "Petens",
+            (int)LanguageID.German => "Will",
+            (int)LanguageID.Spanish => "Thelo",
+            (int)LanguageID.Korean => "텔로",
+            (int)LanguageID.ChineseS => "法才",
+            (int)LanguageID.ChineseT => "法才",
+            (int)LanguageID.SpanishL => "Turian",
+            _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
+        },
         _ => throw new ArgumentOutOfRangeException(nameof(trainer), trainer, null),
+    };
+
+    private static string GetGimmighoulFixedNickname(TrainerGift9a trainer, int language) => language switch
+    {
+        (int)LanguageID.Japanese => "はこいり",
+        (int)LanguageID.English => "Chestly",
+        (int)LanguageID.French => "Trésor",
+        (int)LanguageID.Italian => "Bauletto",
+        (int)LanguageID.German => "Schätzchen",
+        (int)LanguageID.Spanish => "Tesorina",
+        (int)LanguageID.Korean => "보무리",
+        (int)LanguageID.ChineseS => "千金",
+        (int)LanguageID.ChineseT => "千金",
+        (int)LanguageID.SpanishL => "Tesorita",
+        _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
     };
 }
 
@@ -301,4 +352,5 @@ public enum TrainerGift9a : byte
     Lucario,
     Floette,
     Stunfisk,
+    Gimmighoul,
 }
