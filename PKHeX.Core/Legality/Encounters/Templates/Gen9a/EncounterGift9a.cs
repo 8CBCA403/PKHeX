@@ -124,25 +124,17 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
     private void SetMoves(PA9 pk, PersonalInfo9ZA pi, byte level)
     {
         var (learn, plus) = LearnSource9ZA.GetLearnsetAndPlus(Species, Form);
-        Span<ushort> moves = stackalloc ushort[4];
+        pk.SetPlusFlagsEncounter(pi, plus, level);
         if (Moves.HasMoves)
         {
             pk.SetMoves(Moves);
-            pk.GetMoves(moves);
-            PlusRecordApplicator.SetPlusFlagsEncounter(pk, pi, plus, level);
             return;
         }
 
-        if (!IsAlpha)
-        {
-            learn.SetEncounterMoves(level, moves);
-            PlusRecordApplicator.SetPlusFlagsEncounter(pk, pi, plus, level);
-        }
-        else
-        {
-            learn.SetEncounterMovesBackwards(level, moves, sameDescend: false);
-            PlusRecordApplicator.SetPlusFlagsEncounter(pk, pi, plus, level, moves[0] = pi.AlphaMove);
-        }
+        Span<ushort> moves = stackalloc ushort[4];
+        learn.SetEncounterMovesBackwards(level, moves, sameDescend: false);
+        if (pk.IsAlpha)
+            pk.SetPlusFlagsSpecific(pi, moves[0] = pi.AlphaMove);
         pk.SetMoves(moves);
     }
 
@@ -257,6 +249,7 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
         TrainerGift9a.Floette => 1,
         TrainerGift9a.Stunfisk => 250932,
         TrainerGift9a.Gimmighoul => 115090,
+        TrainerGift9a.Magearna => 981300,
         _ => throw new ArgumentOutOfRangeException(nameof(trainer), trainer, null),
     };
 
@@ -266,6 +259,7 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
         TrainerGift9a.Floette => 0,
         TrainerGift9a.Stunfisk => 0,
         TrainerGift9a.Gimmighoul => 0,
+        TrainerGift9a.Magearna => 0, // encounter is set as male OT, even though Jett is female
         _ => throw new ArgumentOutOfRangeException(nameof(trainer), trainer, null),
     };
 
@@ -327,6 +321,20 @@ public sealed record EncounterGift9a(ushort Species, byte Form, byte Level, byte
             (int)LanguageID.SpanishL => "Turian",
             _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
         },
+        TrainerGift9a.Magearna => language switch
+        {
+            (int)LanguageID.Japanese => "ジェット",
+            (int)LanguageID.English => "Jett",
+            (int)LanguageID.French => "Bridjet",
+            (int)LanguageID.Italian => "Aviona",
+            (int)LanguageID.German => "Jette",
+            (int)LanguageID.Spanish => "Viona",
+            (int)LanguageID.Korean => "제트",
+            (int)LanguageID.ChineseS => "捷朵",
+            (int)LanguageID.ChineseT => "捷朵",
+            (int)LanguageID.SpanishL => "Viona",
+            _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
+        },
         _ => throw new ArgumentOutOfRangeException(nameof(trainer), trainer, null),
     };
 
@@ -353,4 +361,5 @@ public enum TrainerGift9a : byte
     Floette,
     Stunfisk,
     Gimmighoul,
+    Magearna,
 }

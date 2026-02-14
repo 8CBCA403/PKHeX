@@ -142,6 +142,8 @@ public sealed class ShowdownSet : IBattleTemplate
                     first = false;
                     continue;
                 }
+                if (trim.Length == 0)
+                    break;
                 LogError(LineLength, line);
                 continue;
             }
@@ -252,18 +254,17 @@ public sealed class ShowdownSet : IBattleTemplate
         var movelist = strings.movelist;
         var moveString = ParseLineMove(line, strings);
         int move = StringUtil.FindIndexIgnoreCase(movelist, moveString);
-        var moves = Moves.AsSpan();
         if (move < 0)
         {
             LogError(MoveUnrecognized, moveString);
         }
-        else if (moves.Contains((ushort)move))
+        else if (Moves.Contains((ushort)move))
         {
             LogError(MoveDuplicate, moveString);
         }
         else
         {
-            moves[index] = (ushort)move;
+            Moves[index] = (ushort)move;
             countMoves++;
         }
     }
@@ -560,8 +561,8 @@ public sealed class ShowdownSet : IBattleTemplate
                 result.Add(cfg.Push(token, Friendship));
                 break;
             case BattleTemplateToken.IVs:
-                var maxIV = Context.Generation() < 3 ? 15 : 31;
-                if (!IVs.AsSpan().ContainsAnyExcept(maxIV))
+                var maxIV = Context.Generation < 3 ? 15 : 31;
+                if (!IVs.ContainsAnyExcept(maxIV))
                     break; // skip if all IVs are maxed
                 var nameIVs = cfg.GetStatDisplay(settings.StatsIVs);
                 var ivs = GetStringStats(IVs, maxIV, nameIVs);
@@ -572,7 +573,7 @@ public sealed class ShowdownSet : IBattleTemplate
             // EVs
             case BattleTemplateToken.EVsWithNature:
             case BattleTemplateToken.EVsAppendNature:
-            case BattleTemplateToken.EVs when EVs.AsSpan().ContainsAnyExcept(0):
+            case BattleTemplateToken.EVs when EVs.ContainsAnyExcept(0):
                 AddEVs(result, settings, token);
                 break;
 
@@ -655,7 +656,7 @@ public sealed class ShowdownSet : IBattleTemplate
     /// <remarks>Appends the nature amplification to the stat values, if not a neutral nature.</remarks>
     public static string GetStringStatsNatureAmp<T>(ReadOnlySpan<T> stats, T ignoreValue, StatDisplayConfig statNames, Nature nature) where T : IEquatable<T>
     {
-        var (plus, minus) = NatureAmp.GetNatureModification(nature);
+        var (plus, minus) = nature.GetNatureModification();
         if (plus == minus)
             return GetStringStats(stats, ignoreValue, statNames); // neutral nature won't appear any different
 
@@ -801,9 +802,8 @@ public sealed class ShowdownSet : IBattleTemplate
         pk.GetEVs(EVs);
         pk.GetIVs(IVs);
 
-        var moves = Moves.AsSpan();
-        pk.GetMoves(moves);
-        if (moves.Contains((ushort)Move.HiddenPower))
+        pk.GetMoves(Moves);
+        if (Moves.Contains((ushort)Move.HiddenPower))
             HiddenPowerType = (sbyte)HiddenPower.GetType(IVs, Context);
 
         Nature = pk.StatNature;
@@ -893,7 +893,7 @@ public sealed class ShowdownSet : IBattleTemplate
         }
 
         // Nickname Detection
-        if (line.IndexOf('(') != -1 && line.IndexOf(')') != -1)
+        if (line.Contains('(') && line.Contains(')'))
             ParseSpeciesNickname(line, strings);
         else
             ParseSpeciesForm(line, strings);
@@ -1028,8 +1028,8 @@ public sealed class ShowdownSet : IBattleTemplate
             return hiddenPowerName;
 
         HiddenPowerType = (sbyte)hpVal;
-        var maxIV = Context.Generation() < 3 ? 15 : 31;
-        if (IVs.AsSpan().ContainsAnyExcept(maxIV))
+        var maxIV = Context.Generation < 3 ? 15 : 31;
+        if (IVs.ContainsAnyExcept(maxIV))
         {
             if (!HiddenPower.SetIVsForType(hpVal, IVs, Context))
                 LogError(HiddenPowerIncompatibleIVs, type);

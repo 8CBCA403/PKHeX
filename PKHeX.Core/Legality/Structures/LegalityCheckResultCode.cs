@@ -146,7 +146,6 @@ public enum LegalityCheckResultCode : ushort
     FormPikachuCosplay,
     FormPikachuCosplayInvalid,
     FormPikachuEventInvalid,
-    FormInvalidExpect_0,
     FormValid,
     FormVivillon,
     FormVivillonEventPre,
@@ -306,10 +305,7 @@ public enum LegalityCheckResultCode : ushort
     // Stats
     StatDynamaxInvalid,
     StatIncorrectHeight,
-    StatIncorrectHeightCopy,
-    StatIncorrectHeightValue,
     StatIncorrectWeight,
-    StatIncorrectWeightValue,
     StatInvalidHeightWeight,
     StatGigantamaxInvalid,
     StatGigantamaxValid,
@@ -381,9 +377,6 @@ public enum LegalityCheckResultCode : ushort
     BulkSharingPIDEncounterType,
     BulkDuplicateFusionSlot,
     BulkDuplicateMysteryGiftEggReceived,
-    BulkDuplicateMegaStoneSlot,
-    BulkDuplicateMegaStoneInventory,
-    BulkNotAcquiredMegaStoneInventory,
     BulkFusionSourceInvalid,
     BulkSharingTrainerIDs,
     BulkSharingTrainerVersion,
@@ -398,6 +391,7 @@ public enum LegalityCheckResultCode : ushort
     EvoTradeReqOutsider_0,
     FormArgumentLEQ_0,
     FormArgumentGEQ_0,
+    FormInvalidExpect_0,
     HyperTrainLevelGEQ_0, // level
     IVAllEqual_0,
     IVFlawlessCountGEQ_0, // count
@@ -410,11 +404,17 @@ public enum LegalityCheckResultCode : ushort
     WordFilterTooManyNumbers_0, // count
     PokerusDaysLEQ_0, // days
     PokerusStrainUnobtainable_0, // strain
-    MovePPExpectHealed_0, // move slot
-    MovePPTooHigh_0, // move slot
-    MovePPUpsTooHigh_0, // move slot
     MemoryHTGender_0, // gender value
     G6SuperTrainBagInvalid_0,
+    StatIncorrectHeightValue_0,
+    StatIncorrectWeightValue_0,
+    StatIncorrectScaleValue_0,
+
+    // Two Numbers
+    FirstWithTwoArguments,
+    MovePPTooHigh_01 = FirstWithTwoArguments, // move slot, value
+    MovePPUpsTooHigh_01, // move slot, value
+    MovePPExpectHealed_01, // move slot, value
 
     // Single Argument: Move ID
     FirstWithMove,
@@ -429,7 +429,10 @@ public enum LegalityCheckResultCode : ushort
 
     // Single Argument: Item ID
     FirstWithItem,
-    BulkAssignedMegaStoneNotFound_0 = FirstWithItem, // item ID
+    BulkHeldItemInventoryAssignedNoneHeld_0 = FirstWithItem, // item ID
+    BulkHeldItemInventoryMultipleSlots_0,
+    BulkHeldItemInventoryNotAcquired_0,
+    BulkHeldItemInventoryUnassigned_0,
 
     // One Argument: Language
     FirstWithLanguage,

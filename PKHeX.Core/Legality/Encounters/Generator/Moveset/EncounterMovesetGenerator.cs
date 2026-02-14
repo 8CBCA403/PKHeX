@@ -131,7 +131,7 @@ public static class EncounterMovesetGenerator
         pk.Version = version;
         if (version is GameVersion.GO)
             return GenerateVersionEncountersGO(pk, moves);
-        return GenerateVersionEncounters(pk, moves, version, version.GetGeneration(), version.GetContext());
+        return GenerateVersionEncounters(pk, moves, version, version.Generation, version.Context);
     }
 
     private static IEnumerable<IEncounterable> GenerateVersionEncountersGO(PKM pk, ReadOnlyMemory<ushort> moves)
@@ -382,7 +382,7 @@ public static class EncounterMovesetGenerator
                 return true;
             if (enc is IEncounterFormRandom { IsRandomUnspecificForm: true } or { Species: (ushort)Species.Unown })
                 return true;
-            if (enc is EncounterStatic7 {IsTotem: true} && evo.Form == 0 && current.Generation() > 7) // totems get form wiped
+            if (enc is EncounterStatic7 {IsTotem: true} && evo.Form == 0 && current.Generation > 7) // totems get form wiped
                 return true;
             break;
         }
@@ -433,7 +433,7 @@ public static class EncounterMovesetGenerator
         if (slot is IMoveset m)
             return m.Moves.ContainsAll(needs);
         if (needs.Length == 1 && slot is ISingleMoveBonus bonus)
-            return bonus is { IsMoveBonusPossible: true, IsMoveBonusRequired: true } && bonus.IsMoveBonus(needs[0]);
+            return bonus is { IsMoveBonusPossible: true } && bonus.IsMoveBonus(needs[0]);
         if (slot.Generation <= 2)
             return HasAllNeededMovesEncounter2(needs, slot);
         return false;

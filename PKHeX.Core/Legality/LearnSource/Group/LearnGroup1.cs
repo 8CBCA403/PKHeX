@@ -198,7 +198,7 @@ public sealed class LearnGroup1 : ILearnGroup
             if (entry.EvoStage == stage)
                 return entry.Info.Argument < chk.Argument;
         }
-        else if (entry.Info.Method.IsEggSource())
+        else if (entry.Info.Method.IsEggSource)
         {
             return true;
         }
@@ -228,10 +228,7 @@ public sealed class LearnGroup1 : ILearnGroup
     {
         if (enc is IMoveset { Moves: { HasMoves: true } x })
         {
-            result[x.Move4] = true;
-            result[x.Move3] = true;
-            result[x.Move2] = true;
-            result[x.Move1] = true;
+            x.FlagMoves(result);
         }
         else
         {

@@ -82,15 +82,17 @@ public readonly ref struct LegalityLocalizationContext
         var template = code.GetTemplate(Settings.Lines);
         if (code < FirstWithArgument)
             return template;
-        if (code.IsArgument())
+        if (code.IsArgument)
             return string.Format(template, chk.Argument);
-        if (code.IsMove())
+        if (code.IsArgument2)
+            return string.Format(template, chk.Argument, chk.Argument2);
+        if (code.IsMove)
             return string.Format(template, GetMoveName(chk.Argument));
-        if (code.IsItem())
+        if (code.IsItem)
             return string.Format(template, GetItemName(chk.Argument));
-        if (code.IsLanguage())
+        if (code.IsLanguage)
             return string.Format(template, GetLanguageName(chk.Argument), GetLanguageName(Analysis.Entity.Language));
-        if (code.IsMemory())
+        if (code.IsMemory)
             return GetMemory(chk, template, code);
 
         // Complex codes may require additional context or arguments.

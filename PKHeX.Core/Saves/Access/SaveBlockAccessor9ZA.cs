@@ -46,6 +46,7 @@ public sealed class SaveBlockAccessor9ZA(SAV9ZA sav) : SCBlockAccessor
     public EventWorkValueStorageKey128 Spawner4 { get; } = new(sav, Block(sav, KEventSpawner4)); // (u64-key, u64-hash, u64-struct)
 
     public MableStatus9a Mable { get; } = new(sav, Block(sav, KStatusMable));
+    public DonutPocket9a Donuts { get; } = new(sav, BlockSafe(sav, KDonuts));
 
     private const uint KBox = 0x0d66012c; // Box Data
     private const uint KParty = 0x3AA1A9AD; // Party Data
@@ -81,7 +82,7 @@ public sealed class SaveBlockAccessor9ZA(SAV9ZA sav) : SCBlockAccessor
     private const uint KEventSpawner2 = 0x79ABCB0B; // (u64-key, u64-bool, u64-struct)
     private const uint KEventInfiniteRank = 0x7C896A83; // (u64-key, u64-struct)
     private const uint KEventSpawner4 = 0xD1A3FF7B; // (u64-key, u64-hash, u64-struct)
-                                                     // B25E7EE5 0x400 unused
+    private const uint KRogueSimulatorRecords = 0xB25E7EE5; // Rogue Mega Evolution Simulator Records
 
     private const uint KEventReport = 0xAF2165F0; // 0x3000 (u64,(s64,u64) value)
     private const uint KObstruction = 0x4C26C29B; // (u64, u64-state, u64-unused)[2000]
@@ -152,4 +153,10 @@ public sealed class SaveBlockAccessor9ZA(SAV9ZA sav) : SCBlockAccessor
     private const uint KNightRoyaleBonusCards = 0x2A07F494; // object
 
     private const uint KStatusMable = 0x85DBDCE9; // Mable Overall Status
+
+    private const uint KDistortionTimeRemain = 0x84D0F3CA;
+    private const uint KDonuts = 0xBE007476; // object: donut[999], sizeof = 0x48
+    private const uint KDonutDistortionInUse = 0x25335B2A; // Inside distortion, this is the currently used donut
+    public const uint KHyperspaceSurveyPoints = 0x0235471C;
+    public const uint KStreetName = 0xBCCE00D6; // 0x26 string = 18 chars + \0
 }
